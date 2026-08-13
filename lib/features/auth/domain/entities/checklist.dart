@@ -55,9 +55,18 @@ class ChecklistDocument {
   bool get isRejected => review == DocReview.rejected;
   bool get isApproved => review == DocReview.approved;
 
-  /// The applicant still has to act on this item: a required document that is
-  /// missing, or any document that was rejected (must be re-uploaded).
-  bool get needsAction => (isRequired && isMissing) || isRejected;
+  /// A slot exists but its file hasn't been uploaded yet (created via /me/documents
+  /// without attaching the file). Still needs the applicant to upload it.
+  bool get needsFile => documentId != null && !hasFile;
+
+  /// The applicant can upload/replace the file: no slot yet, slot without a file,
+  /// or a rejected document that must be re-uploaded. (Approved/pending-with-file
+  /// are left alone.)
+  bool get canUpload => isMissing || needsFile || isRejected;
+
+  /// The applicant still has to act on this item: a required document missing or
+  /// without its file, or any document that was rejected.
+  bool get needsAction => (isRequired && (isMissing || needsFile)) || isRejected;
 
   factory ChecklistDocument.fromJson(Map<String, dynamic> json) => ChecklistDocument(
         requirementId: json['requirementId'] as int,

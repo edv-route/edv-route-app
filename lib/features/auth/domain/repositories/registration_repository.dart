@@ -53,6 +53,11 @@ abstract interface class RegistrationRepository {
   /// their review state). Requires an active session (token from register/login).
   Future<Checklist> loadChecklist();
 
+  /// Creates a document slot on the applicant's solicitud (POST /me/documents) and
+  /// returns its id, so its file can then be attached with [uploadDocument].
+  /// [vehicleId] is required for vehicle requirements, null for driver ones.
+  Future<String> addDocument({required int requirementId, String? vehicleId});
+
   Future<void> uploadDocument(String documentId, PickedImage image);
   Future<void> uploadVehicleImage(String vehicleId, PickedImage image);
 

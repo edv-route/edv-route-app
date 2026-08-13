@@ -6,11 +6,13 @@ import '../../../../shared/widgets/auth_header.dart';
 import '../../../../theme/app_colors.dart';
 import '../../domain/entities/checklist.dart';
 import '../controllers/checklist_controller.dart';
+import '../widgets/media_picker.dart';
 
 /// "Completa tu solicitud" — after registering (or logging in as an applicant),
 /// the driver sees which documents/vehicle are missing, under review, approved or
-/// rejected, so he can finish. This first version is read-only (status + guidance);
-/// the upload actions (/me/documents, /me/vehicles) are wired next.
+/// rejected, and uploads what's needed. Uploading a document creates its slot
+/// (/me/documents) when needed and attaches the file (/documents/:id/file).
+/// (Adding a vehicle is wired in the next step.)
 class ChecklistScreen extends StatefulWidget {
   const ChecklistScreen({super.key});
 
@@ -38,6 +40,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     await Dependencies.instance.tokenStorage.clear();
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.selection, (_) => false);
+  }
+
+  /// Picks a file (photo or PDF) and uploads it for [doc]; [vehicleId] set for a
+  /// vehicle's document, null for a driver one.
+  Future<void> _upload(ChecklistDocument doc, {String? vehicleId}) async {
+    final image = await pickDocument(context);
+    if (image == null || !mounted) return;
+    await _controller.uploadDocument(doc: doc, vehicleId: vehicleId, image: image);
+    if (_controller.actionError != null && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(_controller.actionError!)));
+      _controller.clearActionError();
+    }
   }
 
   @override
@@ -82,38 +98,25 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           if (checklist.driverDocuments.isEmpty)
             const _EmptyLine('No hay documentos requeridos.')
           else
-            for (final d in checklist.driverDocuments) _DocRow(doc: d),
+            for (final d in checklist.driverDocuments)
+              _DocRow(
+                doc: d,
+                uploading: _controller.isUploading(d.requirementId),
+                onUpload: d.canUpload ? () => _upload(d) : null,
+              ),
           const SizedBox(height: 20),
           const _SectionTitle('Tu vehículo'),
           const SizedBox(height: 8),
           if (!checklist.hasVehicle)
-            const _EmptyLine('Aún no agregaste tu vehículo. Es obligatorio para aprobar tu ingreso.')
+            const _VehiclePlaceholder()
           else
-            for (final v in checklist.vehicles) _VehicleCard(vehicle: v),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.gold50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.gold300),
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.construction, color: AppColors.gold700, size: 20),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Las opciones para subir tus documentos y registrar tu vehículo '
-                    'llegan en la próxima actualización.',
-                    style: TextStyle(fontSize: 13, color: AppColors.ink, height: 1.35),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+            for (final v in checklist.vehicles)
+              _VehicleCard(
+                vehicle: v,
+                isUploading: (rid) => _controller.isUploading(rid, vehicleId: v.id),
+                onUpload: (doc) => _upload(doc, vehicleId: v.id),
+              ),
+          const SizedBox(height: 20),
           TextButton.icon(
             onPressed: _logout,
             icon: const Icon(Icons.logout, size: 18),
@@ -198,11 +201,44 @@ class _EmptyLine extends StatelessWidget {
       );
 }
 
-/// A driver-document row: name + review badge + rejection reason when rejected.
+/// Placeholder for the vehicle section until "add vehicle" is wired (next step).
+class _VehiclePlaceholder extends StatelessWidget {
+  const _VehiclePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.gold50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gold300),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.directions_car_outlined, color: AppColors.gold700, size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Aún no agregaste tu vehículo (obligatorio para aprobar tu ingreso). '
+              'La opción para registrarlo llega en la próxima actualización.',
+              style: TextStyle(fontSize: 13, color: AppColors.ink, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A document row: name + review badge + rejection reason + upload action.
 class _DocRow extends StatelessWidget {
   final ChecklistDocument doc;
+  final bool uploading;
+  final VoidCallback? onUpload;
 
-  const _DocRow({required this.doc});
+  const _DocRow({required this.doc, required this.uploading, this.onUpload});
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +262,7 @@ class _DocRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _ReviewBadge(review: doc.review, isRequired: doc.isRequired),
+              _DocBadge(doc: doc),
             ],
           ),
           if (doc.isRejected && doc.rejectionReason != null) ...[
@@ -236,17 +272,49 @@ class _DocRow extends StatelessWidget {
               style: const TextStyle(fontSize: 12.5, color: AppColors.primary700, height: 1.3),
             ),
           ],
+          if (onUpload != null || uploading) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: uploading
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                      child: SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.primary),
+                      ),
+                    )
+                  : TextButton.icon(
+                      onPressed: onUpload,
+                      icon: Icon(doc.isRejected ? Icons.refresh : Icons.upload_file, size: 18),
+                      label: Text(doc.isRejected ? 'Volver a subir' : 'Subir'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// A vehicle card: label + its own review state + its document rows.
+/// A vehicle card: label + its own review state + its document rows (uploadable).
 class _VehicleCard extends StatelessWidget {
   final ChecklistVehicle vehicle;
+  final bool Function(int requirementId) isUploading;
+  final void Function(ChecklistDocument doc) onUpload;
 
-  const _VehicleCard({required this.vehicle});
+  const _VehicleCard({
+    required this.vehicle,
+    required this.isUploading,
+    required this.onUpload,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +351,12 @@ class _VehicleCard extends StatelessWidget {
           ],
           if (vehicle.documents.isNotEmpty) ...[
             const Divider(height: 18),
-            for (final d in vehicle.documents) _DocRow(doc: d),
+            for (final d in vehicle.documents)
+              _DocRow(
+                doc: d,
+                uploading: isUploading(d.requirementId),
+                onUpload: d.canUpload ? () => onUpload(d) : null,
+              ),
           ],
         ],
       ),
@@ -291,37 +364,32 @@ class _VehicleCard extends StatelessWidget {
   }
 }
 
-/// Colored pill for a document's review state.
-class _ReviewBadge extends StatelessWidget {
-  final DocReview review;
-  final bool isRequired;
+/// Colored pill for a document's state (review status, or "Sin archivo" when the
+/// slot exists but no file has been attached yet).
+class _DocBadge extends StatelessWidget {
+  final ChecklistDocument doc;
 
-  const _ReviewBadge({required this.review, required this.isRequired});
+  const _DocBadge({required this.doc});
 
   @override
   Widget build(BuildContext context) {
-    late final String label;
-    late final Color bg;
-    late final Color fg;
-    switch (review) {
-      case DocReview.approved:
-        label = 'Aprobado';
-        bg = const Color(0xFFDCFCE7);
-        fg = const Color(0xFF166534);
-      case DocReview.pending:
-        label = 'En revisión';
-        bg = AppColors.gold100;
-        fg = AppColors.gold800;
-      case DocReview.rejected:
-        label = 'Rechazado';
-        bg = AppColors.primary100;
-        fg = AppColors.primary800;
-      case DocReview.missing:
-        label = isRequired ? 'Falta' : 'Opcional';
-        bg = isRequired ? AppColors.primary50 : AppColors.cardGrey;
-        fg = isRequired ? AppColors.primary700 : AppColors.muted;
+    if (doc.isApproved) {
+      return const _Pill(label: 'Aprobado', bg: Color(0xFFDCFCE7), fg: Color(0xFF166534));
     }
-    return _Pill(label: label, bg: bg, fg: fg);
+    if (doc.isRejected) {
+      return const _Pill(label: 'Rechazado', bg: AppColors.primary100, fg: AppColors.primary800);
+    }
+    if (doc.isMissing) {
+      return _Pill(
+        label: doc.isRequired ? 'Falta' : 'Opcional',
+        bg: doc.isRequired ? AppColors.primary50 : AppColors.cardGrey,
+        fg: doc.isRequired ? AppColors.primary700 : AppColors.muted,
+      );
+    }
+    if (doc.needsFile) {
+      return const _Pill(label: 'Sin archivo', bg: AppColors.primary50, fg: AppColors.primary700);
+    }
+    return const _Pill(label: 'En revisión', bg: AppColors.gold100, fg: AppColors.gold800);
   }
 }
 

@@ -68,6 +68,20 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
   }
 
   @override
+  Future<String> addDocument({required int requirementId, String? vehicleId}) async {
+    final token = await _requireToken();
+    final data = await _remote.addDocument({
+      'requirementId': requirementId,
+      if (vehicleId != null) 'vehicleId': vehicleId,
+    }, token: token);
+    final id = data['id'] as String?;
+    if (id == null || id.isEmpty) {
+      throw const ApiException('No se pudo registrar el documento.');
+    }
+    return id;
+  }
+
+  @override
   Future<void> uploadDocument(String documentId, PickedImage image) async {
     final token = await _requireToken();
     await _remote.uploadDocumentFile(documentId, _part(image), token: token);

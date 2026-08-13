@@ -27,6 +27,11 @@ class RegistrationRemoteDataSource {
   Future<Map<String, dynamic>> checklist({required String token}) =>
       _client.get('/driver-auth/me/checklist', token: token);
 
+  /// Authenticated: create a document slot on the applicant's OWN solicitud
+  /// (born pending). The file is attached afterwards via /documents/:id/file.
+  Future<Map<String, dynamic>> addDocument(Map<String, dynamic> body, {required String token}) =>
+      _client.post('/driver-auth/me/documents', body, token: token);
+
   Future<void> uploadDocumentFile(String documentId, MultipartPart file, {required String token}) =>
       _client.postMultipart('/driver-auth/documents/$documentId/file', files: [file], token: token);
 
