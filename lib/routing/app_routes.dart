@@ -4,7 +4,9 @@
 abstract final class AppRoutes {
   const AppRoutes._();
 
-  static const String selection = '/';
+  /// Launch route: resumes a stored session, then routes on.
+  static const String boot = '/';
+  static const String selection = '/selection';
   static const String driverLogin = '/driver/login';
   /// Informational pre-screen (membership + benefits) that starts the join flow.
   static const String registerIntro = '/driver/register/info';

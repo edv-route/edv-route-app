@@ -12,4 +12,7 @@ class AuthRemoteDataSource {
         'nationalId': nationalId,
         'password': password,
       });
+
+  /// GET /driver-auth/me → the driver's public profile (bearer auth).
+  Future<Map<String, dynamic>> me(String token) => _client.get('/driver-auth/me', token: token);
 }

@@ -14,6 +14,12 @@ abstract interface class AuthRepository {
   /// The stored session token, or null if not logged in.
   Future<String?> currentToken();
 
+  /// The current session's driver profile (GET /me) when a valid token is stored,
+  /// or null when there is no session or it expired (the token is then cleared).
+  /// Rethrows [ApiException] on transport errors so the caller can distinguish
+  /// "no session" from "couldn't reach the server".
+  Future<Driver?> currentDriver();
+
   /// Clears the stored session.
   Future<void> logout();
 }

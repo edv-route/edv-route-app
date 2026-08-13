@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/auth/presentation/screens/driver_login_screen.dart';
 import 'features/auth/presentation/screens/driver_register_screen.dart';
 import 'features/auth/presentation/screens/membership_info_screen.dart';
+import 'features/auth/presentation/screens/splash_screen.dart';
 import 'features/auth/presentation/screens/user_type_selection_screen.dart';
 import 'routing/app_routes.dart';
 import 'theme/app_theme.dart';
@@ -26,8 +27,9 @@ class EdvRouteApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('es')],
-      initialRoute: AppRoutes.selection,
+      initialRoute: AppRoutes.boot,
       routes: {
+        AppRoutes.boot: (_) => const SplashScreen(),
         AppRoutes.selection: (_) => const UserTypeSelectionScreen(),
         AppRoutes.driverLogin: (_) => const DriverLoginScreen(),
         AppRoutes.registerIntro: (_) => const MembershipInfoScreen(),

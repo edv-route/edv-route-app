@@ -1,5 +1,6 @@
 /// Administrative status of a driver — mirrors the backend `driver_status` enum.
 enum DriverStatus {
+  applicant,
   pending,
   approved,
   rejected,
@@ -7,6 +8,7 @@ enum DriverStatus {
   unknown;
 
   static DriverStatus fromApi(String? value) => switch (value) {
+        'applicant' => DriverStatus.applicant,
         'pending' => DriverStatus.pending,
         'approved' => DriverStatus.approved,
         'rejected' => DriverStatus.rejected,
