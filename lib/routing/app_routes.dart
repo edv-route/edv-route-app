@@ -6,5 +6,7 @@ abstract final class AppRoutes {
 
   static const String selection = '/';
   static const String driverLogin = '/driver/login';
+  /// Informational pre-screen (membership + benefits) that starts the join flow.
+  static const String registerIntro = '/driver/register/info';
   static const String driverRegister = '/driver/register';
 }

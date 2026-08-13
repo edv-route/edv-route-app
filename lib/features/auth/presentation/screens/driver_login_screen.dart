@@ -146,7 +146,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                         ),
                         TextButton(
                           onPressed: () => Navigator.of(context)
-                              .pushNamed(AppRoutes.driverRegister),
+                              .pushNamed(AppRoutes.registerIntro),
                           style: TextButton.styleFrom(
                             foregroundColor: AppColors.primary,
                           ),
