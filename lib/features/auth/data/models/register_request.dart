@@ -46,8 +46,10 @@ class VehicleDraft {
       };
 }
 
-/// The full registration payload for `POST /driver-auth/register`. Payment is
-/// never sent here — it goes as a separate submission after the alta.
+/// Step-1 registration payload for `POST /driver-auth/register` (solicitudes-app):
+/// personal data + privacy consent ONLY. Documents, vehicles and payment are added
+/// afterwards from the checklist (/me/* endpoints), never here — the backend
+/// rejects any extra field (the register body is `additionalProperties: false`).
 class RegisterRequest {
   final String firstName;
   final String? middleName;
@@ -59,8 +61,7 @@ class RegisterRequest {
   final String? phone;
   final String nationalId;
   final String password;
-  final List<VehicleDraft> vehicles;
-  final List<DocumentRef> documents;
+  final bool acceptedPrivacy;
 
   const RegisterRequest({
     required this.firstName,
@@ -73,8 +74,7 @@ class RegisterRequest {
     this.phone,
     required this.nationalId,
     required this.password,
-    this.vehicles = const [],
-    this.documents = const [],
+    required this.acceptedPrivacy,
   });
 
   Map<String, dynamic> toJson() => {
@@ -88,8 +88,7 @@ class RegisterRequest {
         if (phone != null && phone!.isNotEmpty) 'phone': phone,
         'nationalId': nationalId,
         'password': password,
-        'vehicles': vehicles.map((v) => v.toJson()).toList(),
-        'documents': documents.map((d) => d.toJson()).toList(),
+        'acceptedPrivacy': acceptedPrivacy,
       };
 }
 
