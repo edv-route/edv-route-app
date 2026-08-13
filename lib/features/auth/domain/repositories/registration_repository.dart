@@ -1,4 +1,5 @@
 import '../../data/models/register_request.dart';
+import '../entities/alta_debt.dart';
 import '../entities/checklist.dart';
 import '../entities/enrollment_cost.dart';
 import '../entities/payment_method_option.dart';
@@ -73,7 +74,11 @@ abstract interface class RegistrationRepository {
   Future<void> uploadDocument(String documentId, PickedImage image);
   Future<void> uploadVehicleImage(String vehicleId, PickedImage image);
 
-  /// Submits the alta payment as an `enroll` receipt covering membership +
-  /// [periods] tariff weeks (left pending for an admin to approve).
-  Future<void> submitPayment(PaymentCapture capture, {required int periods});
+  /// The driver's alta/arrears debt (GET /me/debt), for the deferred payment.
+  Future<AltaDebt> loadDebt();
+
+  /// Submits the DEFERRED alta payment (purpose=`debt`, after approval): settles
+  /// the whole owed debt and requires the terms & conditions acceptance. Left
+  /// pending for an admin to approve.
+  Future<void> submitPayment(PaymentCapture capture, {required bool acceptedTerms});
 }

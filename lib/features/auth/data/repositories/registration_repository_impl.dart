@@ -1,6 +1,7 @@
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/storage/token_storage.dart';
+import '../../domain/entities/alta_debt.dart';
 import '../../domain/entities/checklist.dart';
 import '../../domain/entities/enrollment_cost.dart';
 import '../../domain/entities/payment_method_option.dart';
@@ -119,12 +120,20 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
   }
 
   @override
-  Future<void> submitPayment(PaymentCapture capture, {required int periods}) async {
+  Future<AltaDebt> loadDebt() async {
+    final token = await _requireToken();
+    final data = await _remote.debt(token: token);
+    return AltaDebt.fromJson(data);
+  }
+
+  @override
+  Future<void> submitPayment(PaymentCapture capture, {required bool acceptedTerms}) async {
     final token = await _requireToken();
     final fields = <String, String>{
-      // The alta is paid as an `enroll` receipt = membership + N tariff weeks.
-      'purpose': 'enroll',
-      'periods': '$periods',
+      // Deferred alta payment: settle the whole owed debt after approval, with the
+      // terms & conditions acceptance the backend gate requires.
+      'purpose': 'debt',
+      'acceptedTerms': acceptedTerms ? 'true' : 'false',
       'paymentMethodId': '${capture.paymentMethodId}',
       'paidOn': capture.paidOn,
       if (_notEmpty(capture.reference)) 'reference': capture.reference!,

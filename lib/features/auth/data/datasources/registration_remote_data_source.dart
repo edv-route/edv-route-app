@@ -37,6 +37,10 @@ class RegistrationRemoteDataSource {
   Future<Map<String, dynamic>> addVehicle(Map<String, dynamic> body, {required String token}) =>
       _client.post('/driver-auth/me/vehicles', body, token: token);
 
+  /// Authenticated: the driver's alta/arrears debt (for the deferred payment).
+  Future<Map<String, dynamic>> debt({required String token}) =>
+      _client.get('/driver-auth/me/debt', token: token);
+
   Future<void> uploadDocumentFile(String documentId, MultipartPart file, {required String token}) =>
       _client.postMultipart('/driver-auth/documents/$documentId/file', files: [file], token: token);
 

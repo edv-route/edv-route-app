@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../auth/domain/entities/driver.dart';
+import '../../../auth/presentation/screens/alta_payment_screen.dart';
 import '../../../auth/presentation/screens/checklist_screen.dart';
 import 'driver_shell.dart';
 import 'driver_status_screen.dart';
 
-/// Entry point after login/bootstrap: an `applicant` still completing his solicitud
-/// lands on the checklist; an approved driver on the app shell; any other status
-/// (in review / suspended / rejected) sees the status screen instead.
+/// Entry point after login/bootstrap, by status: an `applicant` still completing
+/// his solicitud lands on the checklist; an `approved` driver goes through the
+/// deferred alta payment gate (which pays if he owes, or passes to the app shell
+/// when settled); any other status (in review / suspended / rejected) sees the
+/// status screen.
 class DriverRootScreen extends StatelessWidget {
   final Driver driver;
 
@@ -15,9 +18,17 @@ class DriverRootScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (driver.status == DriverStatus.applicant) return const ChecklistScreen();
-    final isActive = driver.status == DriverStatus.approved ||
-        driver.status == DriverStatus.unknown;
-    return isActive ? DriverShell(driver: driver) : DriverStatusScreen(driver: driver);
+    switch (driver.status) {
+      case DriverStatus.applicant:
+        return const ChecklistScreen();
+      case DriverStatus.approved:
+        return AltaPaymentScreen(driver: driver);
+      case DriverStatus.unknown:
+        return DriverShell(driver: driver);
+      case DriverStatus.pending:
+      case DriverStatus.rejected:
+      case DriverStatus.suspended:
+        return DriverStatusScreen(driver: driver);
+    }
   }
 }
