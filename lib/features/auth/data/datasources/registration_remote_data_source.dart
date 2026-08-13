@@ -22,6 +22,11 @@ class RegistrationRemoteDataSource {
   Future<Map<String, dynamic>> register(Map<String, dynamic> body) =>
       _client.post('/driver-auth/register', body);
 
+  /// Authenticated: the applicant's "completa tu solicitud" checklist (documents +
+  /// vehicles with their per-item review state).
+  Future<Map<String, dynamic>> checklist({required String token}) =>
+      _client.get('/driver-auth/me/checklist', token: token);
+
   Future<void> uploadDocumentFile(String documentId, MultipartPart file, {required String token}) =>
       _client.postMultipart('/driver-auth/documents/$documentId/file', files: [file], token: token);
 

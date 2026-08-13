@@ -1,4 +1,5 @@
 import '../../data/models/register_request.dart';
+import '../entities/checklist.dart';
 import '../entities/enrollment_cost.dart';
 import '../entities/payment_method_option.dart';
 import '../entities/picked_image.dart';
@@ -47,6 +48,10 @@ abstract interface class RegistrationRepository {
 
   /// Creates the alta (persists the returned token) and returns the created ids.
   Future<RegisterResult> register(RegisterRequest request);
+
+  /// The applicant's "completa tu solicitud" checklist (documents + vehicles with
+  /// their review state). Requires an active session (token from register/login).
+  Future<Checklist> loadChecklist();
 
   Future<void> uploadDocument(String documentId, PickedImage image);
   Future<void> uploadVehicleImage(String vehicleId, PickedImage image);

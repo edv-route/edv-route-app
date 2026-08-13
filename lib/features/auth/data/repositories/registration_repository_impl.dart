@@ -1,6 +1,7 @@
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/storage/token_storage.dart';
+import '../../domain/entities/checklist.dart';
 import '../../domain/entities/enrollment_cost.dart';
 import '../../domain/entities/payment_method_option.dart';
 import '../../domain/entities/picked_image.dart';
@@ -57,6 +58,13 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
     // Persist the token so the following uploads/payment are authenticated.
     await _tokenStorage.saveToken(result.token);
     return result;
+  }
+
+  @override
+  Future<Checklist> loadChecklist() async {
+    final token = await _requireToken();
+    final data = await _remote.checklist(token: token);
+    return Checklist.fromJson(data);
   }
 
   @override
