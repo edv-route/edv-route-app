@@ -58,6 +58,18 @@ abstract interface class RegistrationRepository {
   /// [vehicleId] is required for vehicle requirements, null for driver ones.
   Future<String> addDocument({required int requirementId, String? vehicleId});
 
+  /// Registers a vehicle on the applicant's solicitud (POST /me/vehicles) and
+  /// returns its id, so its photos can be uploaded with [uploadVehicleImage] and
+  /// its documents added from the checklist.
+  Future<String> addVehicle({
+    int? vehicleTypeId,
+    String? brand,
+    String? model,
+    int? year,
+    String? color,
+    String? plate,
+  });
+
   Future<void> uploadDocument(String documentId, PickedImage image);
   Future<void> uploadVehicleImage(String vehicleId, PickedImage image);
 

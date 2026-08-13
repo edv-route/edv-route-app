@@ -5,8 +5,11 @@ import '../../../../routing/app_routes.dart';
 import '../../../../shared/widgets/auth_header.dart';
 import '../../../../theme/app_colors.dart';
 import '../../domain/entities/checklist.dart';
+import '../../domain/entities/registration_drafts.dart';
 import '../controllers/checklist_controller.dart';
+import '../widgets/draft_sheet_scaffold.dart';
 import '../widgets/media_picker.dart';
+import '../widgets/vehicle_draft_sheet.dart';
 
 /// "Completa tu solicitud" — after registering (or logging in as an applicant),
 /// the driver sees which documents/vehicle are missing, under review, approved or
@@ -48,6 +51,21 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     final image = await pickDocument(context);
     if (image == null || !mounted) return;
     await _controller.uploadDocument(doc: doc, vehicleId: vehicleId, image: image);
+    _showActionErrorIfAny();
+  }
+
+  /// Opens the add-vehicle sheet (data + photos), then registers it.
+  Future<void> _addVehicle() async {
+    final draft = await showDraftSheet<VehicleItemDraft>(
+      context,
+      (_) => VehicleDraftSheet(vehicleTypes: _controller.vehicleTypes),
+    );
+    if (draft == null || !mounted) return;
+    await _controller.addVehicle(draft);
+    _showActionErrorIfAny();
+  }
+
+  void _showActionErrorIfAny() {
     if (_controller.actionError != null && mounted) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -75,7 +93,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 if (_controller.error != null) {
                   return _ErrorState(message: _controller.error!, onRetry: _controller.load);
                 }
-                return _content(_controller.checklist);
+                return Stack(
+                  children: [
+                    _content(_controller.checklist),
+                    if (_controller.savingVehicle) const _SavingOverlay(),
+                  ],
+                );
               },
             ),
           ),
@@ -108,7 +131,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           const _SectionTitle('Tu vehículo'),
           const SizedBox(height: 8),
           if (!checklist.hasVehicle)
-            const _VehiclePlaceholder()
+            const _EmptyLine('Aún no agregaste tu vehículo. Es obligatorio para aprobar tu ingreso.')
           else
             for (final v in checklist.vehicles)
               _VehicleCard(
@@ -116,6 +139,18 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 isUploading: (rid) => _controller.isUploading(rid, vehicleId: v.id),
                 onUpload: (doc) => _upload(doc, vehicleId: v.id),
               ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _controller.savingVehicle ? null : _addVehicle,
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(checklist.hasVehicle ? 'Agregar otro vehículo' : 'Agregar vehículo'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.fieldBorder),
+              minimumSize: const Size(0, 48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
           const SizedBox(height: 20),
           TextButton.icon(
             onPressed: _logout,
@@ -201,32 +236,29 @@ class _EmptyLine extends StatelessWidget {
       );
 }
 
-/// Placeholder for the vehicle section until "add vehicle" is wired (next step).
-class _VehiclePlaceholder extends StatelessWidget {
-  const _VehiclePlaceholder();
+/// Full-cover progress veil while a vehicle is being registered and its photos
+/// uploaded (the add-vehicle sheet has already closed).
+class _SavingOverlay extends StatelessWidget {
+  const _SavingOverlay();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.gold50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gold300),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.directions_car_outlined, color: AppColors.gold700, size: 20),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Aún no agregaste tu vehículo (obligatorio para aprobar tu ingreso). '
-              'La opción para registrarlo llega en la próxima actualización.',
-              style: TextStyle(fontSize: 13, color: AppColors.ink, height: 1.35),
-            ),
+    return Positioned.fill(
+      child: ColoredBox(
+        color: const Color(0xCCFFFFFF),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 12),
+              const Text(
+                'Registrando tu vehículo…',
+                style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

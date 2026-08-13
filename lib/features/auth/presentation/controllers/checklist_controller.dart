@@ -3,12 +3,14 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../domain/entities/checklist.dart';
 import '../../domain/entities/picked_image.dart';
+import '../../domain/entities/registration_drafts.dart';
+import '../../domain/entities/vehicle_type_option.dart';
 import '../../domain/repositories/registration_repository.dart';
 
 /// Owns the "completa tu solicitud" checklist state: loads the applicant's
-/// document/vehicle review status and drives the upload actions (create the slot
-/// via /me/documents when needed, then attach the file via /documents/:id/file).
-/// Requires an active session (token persisted at register/login).
+/// document/vehicle review status and drives the actions — upload a document
+/// (create the slot via /me/documents when needed, then attach the file) and add
+/// a vehicle (POST /me/vehicles + upload its photos). Requires an active session.
 class ChecklistController extends ChangeNotifier {
   ChecklistController(this._repository);
 
@@ -17,15 +19,19 @@ class ChecklistController extends ChangeNotifier {
   bool _loading = true;
   String? _error;
   Checklist? _checklist;
+  List<VehicleTypeOption> _vehicleTypes = const [];
 
-  /// Which item is uploading right now (keyed by vehicleId-or-driver + requirement),
-  /// so only that row shows a spinner. Null when idle.
+  /// Which document is uploading (keyed by vehicleId-or-driver + requirement), so
+  /// only that row shows a spinner. Null when idle.
   String? _uploadingKey;
+  bool _savingVehicle = false;
   String? _actionError;
 
   bool get loading => _loading;
   String? get error => _error;
   Checklist? get checklist => _checklist;
+  List<VehicleTypeOption> get vehicleTypes => _vehicleTypes;
+  bool get savingVehicle => _savingVehicle;
   String? get actionError => _actionError;
 
   bool isUploading(int requirementId, {String? vehicleId}) =>
@@ -37,6 +43,15 @@ class ChecklistController extends ChangeNotifier {
     notifyListeners();
     try {
       _checklist = await _repository.loadChecklist();
+      // Vehicle types feed the "add vehicle" form; a failure must not break the
+      // checklist (the type is optional), so it degrades to an empty selector.
+      if (_vehicleTypes.isEmpty) {
+        try {
+          _vehicleTypes = await _repository.loadVehicleTypes();
+        } catch (_) {
+          _vehicleTypes = const [];
+        }
+      }
     } on ApiException catch (e) {
       _error = e.message;
     } catch (_) {
@@ -70,6 +85,39 @@ class ChecklistController extends ChangeNotifier {
     }
     _uploadingKey = null;
     notifyListeners();
+  }
+
+  /// Registers a vehicle (POST /me/vehicles) and uploads its photos, then refreshes
+  /// the checklist so its document requirements appear. Returns true on success.
+  Future<bool> addVehicle(VehicleItemDraft draft) async {
+    if (_savingVehicle) return false;
+    _savingVehicle = true;
+    _actionError = null;
+    notifyListeners();
+    try {
+      final vehicleId = await _repository.addVehicle(
+        vehicleTypeId: draft.vehicleTypeId,
+        brand: draft.brand,
+        model: draft.model,
+        year: draft.year,
+        color: draft.color,
+        plate: draft.plate,
+      );
+      for (final photo in draft.photos) {
+        await _repository.uploadVehicleImage(vehicleId, photo);
+      }
+      _checklist = await _repository.loadChecklist();
+      _savingVehicle = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _actionError = e.message;
+    } catch (_) {
+      _actionError = 'No se pudo registrar el vehículo. Intenta de nuevo.';
+    }
+    _savingVehicle = false;
+    notifyListeners();
+    return false;
   }
 
   void clearActionError() {
