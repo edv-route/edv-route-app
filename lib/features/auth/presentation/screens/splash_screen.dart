@@ -4,7 +4,7 @@ import '../../../../core/di.dart';
 import '../../../../routing/app_routes.dart';
 import '../../../home/presentation/screens/driver_root_screen.dart';
 import '../../domain/entities/driver.dart';
-import 'checklist_screen.dart';
+import 'checklist_hub_screen.dart';
 
 /// App entry point: resumes a stored session on launch. Reads the token + GET /me
 /// and routes accordingly — an `applicant` to his checklist, any other driver
@@ -38,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (d == null) {
       navigator.pushReplacementNamed(AppRoutes.selection);
     } else if (d.status == DriverStatus.applicant) {
-      navigator.pushReplacement(MaterialPageRoute(builder: (_) => const ChecklistScreen()));
+      navigator.pushReplacement(MaterialPageRoute(builder: (_) => const ChecklistHubScreen()));
     } else {
       navigator.pushReplacement(MaterialPageRoute(builder: (_) => DriverRootScreen(driver: d)));
     }

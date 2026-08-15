@@ -44,6 +44,11 @@ class RegistrationRemoteDataSource {
   Future<void> uploadDocumentFile(String documentId, MultipartPart file, {required String token}) =>
       _client.postMultipart('/driver-auth/documents/$documentId/file', files: [file], token: token);
 
+  /// Authenticated: signed URL (~60s) to PREVIEW one of the driver's OWN document
+  /// files. Returns `{ url, expiresIn }`.
+  Future<Map<String, dynamic>> documentFileUrl(String documentId, {required String token}) =>
+      _client.get('/driver-auth/documents/$documentId/file', token: token);
+
   Future<void> uploadVehicleImage(String vehicleId, MultipartPart file, {required String token}) =>
       _client.postMultipart('/driver-auth/vehicles/$vehicleId/images', files: [file], token: token);
 

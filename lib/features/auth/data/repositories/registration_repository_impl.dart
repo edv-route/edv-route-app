@@ -120,6 +120,17 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
   }
 
   @override
+  Future<String> documentFileUrl(String documentId) async {
+    final token = await _requireToken();
+    final data = await _remote.documentFileUrl(documentId, token: token);
+    final url = data['url'] as String?;
+    if (url == null || url.isEmpty) {
+      throw const ApiException('No se pudo obtener el documento.');
+    }
+    return url;
+  }
+
+  @override
   Future<AltaDebt> loadDebt() async {
     final token = await _requireToken();
     final data = await _remote.debt(token: token);
@@ -127,7 +138,7 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
   }
 
   @override
-  Future<void> submitPayment(PaymentCapture capture, {required bool acceptedTerms}) async {
+  Future<void> submitPayment(PaymentCapture capture, {required bool acceptedTerms, int weeks = 1}) async {
     final token = await _requireToken();
     final fields = <String, String>{
       // Deferred alta payment: settle the whole owed debt after approval, with the
@@ -136,6 +147,8 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
       'acceptedTerms': acceptedTerms ? 'true' : 'false',
       'paymentMethodId': '${capture.paymentMethodId}',
       'paidOn': capture.paidOn,
+      // Forma A: total weeks paid at the alta (base + advance). Omitted when 1.
+      if (weeks > 1) 'periods': '$weeks',
       if (_notEmpty(capture.reference)) 'reference': capture.reference!,
       if (_notEmpty(capture.payerBank)) 'payerBank': capture.payerBank!,
       if (_notEmpty(capture.payerPhone)) 'payerPhone': capture.payerPhone!,

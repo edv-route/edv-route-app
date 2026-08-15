@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../auth/domain/entities/driver.dart';
 import '../../../auth/presentation/screens/alta_payment_screen.dart';
-import '../../../auth/presentation/screens/checklist_screen.dart';
+import '../../../auth/presentation/screens/checklist_hub_screen.dart';
 import 'driver_shell.dart';
 import 'driver_status_screen.dart';
 
@@ -20,7 +20,7 @@ class DriverRootScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (driver.status) {
       case DriverStatus.applicant:
-        return const ChecklistScreen();
+        return const ChecklistHubScreen();
       case DriverStatus.approved:
         return AltaPaymentScreen(driver: driver);
       case DriverStatus.unknown:

@@ -12,7 +12,7 @@ import '../controllers/driver_register_controller.dart';
 import '../widgets/national_id_field.dart';
 import '../widgets/operator_phone_field.dart';
 import '../widgets/registration_fields.dart';
-import 'checklist_screen.dart';
+import 'checklist_hub_screen.dart';
 
 /// Driver self-registration — STEP 1 (solicitudes-app): personal data + privacy
 /// consent. Submitting creates an `applicant` and continues to the checklist,
@@ -147,7 +147,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     final driver = await _controller.register(_buildRequest());
     if (driver != null && mounted) {
       await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ChecklistScreen()),
+        MaterialPageRoute(builder: (_) => const ChecklistHubScreen()),
       );
     }
   }

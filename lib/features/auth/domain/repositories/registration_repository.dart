@@ -74,11 +74,17 @@ abstract interface class RegistrationRepository {
   Future<void> uploadDocument(String documentId, PickedImage image);
   Future<void> uploadVehicleImage(String vehicleId, PickedImage image);
 
+  /// A short-lived signed URL to preview the file of one of the driver's OWN
+  /// documents (GET /documents/:id/file). The URL expires quickly (~60s), so it is
+  /// fetched on demand when opening the document.
+  Future<String> documentFileUrl(String documentId);
+
   /// The driver's alta/arrears debt (GET /me/debt), for the deferred payment.
   Future<AltaDebt> loadDebt();
 
   /// Submits the DEFERRED alta payment (purpose=`debt`, after approval): settles
   /// the whole owed debt and requires the terms & conditions acceptance. Left
-  /// pending for an admin to approve.
-  Future<void> submitPayment(PaymentCapture capture, {required bool acceptedTerms});
+  /// pending for an admin to approve. [weeks] is the TOTAL weeks paid at the alta
+  /// (1 = base only; N = base + N-1 advance weeks, Forma A).
+  Future<void> submitPayment(PaymentCapture capture, {required bool acceptedTerms, int weeks});
 }

@@ -31,6 +31,7 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
   late final AltaPaymentController _controller =
       AltaPaymentController(Dependencies.instance.registrationRepository);
   bool _acceptedTerms = false;
+  int _weeks = 1; // total weeks paid at the alta (1 = base only; more = advance)
 
   @override
   void initState() {
@@ -64,13 +65,18 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
     );
   }
 
+  /// Total to pay for the chosen number of weeks: base debt + advance weeks.
+  double _totalFor(AltaDebt debt) =>
+      debt.totalUsd + (debt.weeklyTariffUsd ?? 0) * (_weeks - 1);
+
   Future<void> _pay() async {
     final debt = _controller.debt;
     if (debt == null) return;
+    final total = _totalFor(debt);
     final item = await showPaymentSheet(
       context,
       methods: _controller.methods,
-      totalLabel: debt.totalLabel,
+      totalLabel: '\$${total.toStringAsFixed(2)}',
     );
     if (item == null || !mounted) return;
     final ok = await _controller.submit(
@@ -85,6 +91,7 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
         receipt: item.receipt,
       ),
       acceptedTerms: _acceptedTerms,
+      weeks: _weeks,
     );
     if (!ok && _controller.error != null && mounted) {
       ScaffoldMessenger.of(context)
@@ -129,12 +136,21 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
   }
 
   Widget _payContent(AltaDebt debt) {
+    final weekly = debt.weeklyTariffUsd;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _DebtCard(debt: debt),
+          _DebtCard(debt: debt, weeks: _weeks, total: _totalFor(debt)),
+          if (weekly != null) ...[
+            const SizedBox(height: 16),
+            _WeeksSelector(
+              weeks: _weeks,
+              weeklyTariff: weekly,
+              onChanged: (w) => setState(() => _weeks = w),
+            ),
+          ],
           const SizedBox(height: 20),
           _TermsCheck(
             value: _acceptedTerms,
@@ -161,14 +177,18 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
   }
 }
 
-/// Debt breakdown card: one line per concept + the total to pay.
+/// Debt breakdown card: one line per concept, an advance-weeks line when the
+/// applicant chose extra weeks, and the (dynamic) total to pay.
 class _DebtCard extends StatelessWidget {
   final AltaDebt debt;
+  final int weeks;
+  final double total;
 
-  const _DebtCard({required this.debt});
+  const _DebtCard({required this.debt, required this.weeks, required this.total});
 
   @override
   Widget build(BuildContext context) {
+    final weekly = debt.weeklyTariffUsd ?? 0;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -184,19 +204,22 @@ class _DebtCard extends StatelessWidget {
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink),
           ),
           const SizedBox(height: 12),
-          for (final it in debt.items) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: Text(it.label, style: const TextStyle(fontSize: 14, color: AppColors.ink)),
-                ),
-                Text(
-                  '\$${it.amountUsd.toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink),
-                ),
+          // With advance weeks available, consolidate the weekly line into a single
+          // "Tarifa semanal × N" so the breakdown matches the selector's N (avoids
+          // the confusing "1 semana + N adelantadas" split).
+          if (debt.weeklyTariffUsd != null) ...[
+            for (final it in debt.items)
+              if (!it.label.toLowerCase().contains('semana')) ...[
+                _Line(label: it.label, amount: it.amountUsd),
+                const SizedBox(height: 8),
               ],
-            ),
+            _Line(label: 'Tarifa semanal × $weeks', amount: weekly * weeks),
             const SizedBox(height: 8),
+          ] else ...[
+            for (final it in debt.items) ...[
+              _Line(label: it.label, amount: it.amountUsd),
+              const SizedBox(height: 8),
+            ],
           ],
           const Divider(height: 8),
           const SizedBox(height: 8),
@@ -209,12 +232,115 @@ class _DebtCard extends StatelessWidget {
                 ),
               ),
               Text(
-                debt.totalLabel,
+                '\$${total.toStringAsFixed(2)}',
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary700),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One label + amount row of the breakdown.
+class _Line extends StatelessWidget {
+  final String label;
+  final double amount;
+
+  const _Line({required this.label, required this.amount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(label, style: const TextStyle(fontSize: 14, color: AppColors.ink)),
+        ),
+        Text(
+          '\$${amount.toStringAsFixed(2)}',
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink),
+        ),
+      ],
+    );
+  }
+}
+
+/// Advance-weeks selector (Forma A): the applicant may prepay extra weeks on top
+/// of the mandatory first one. Minimum 1 (the base week).
+class _WeeksSelector extends StatelessWidget {
+  final int weeks;
+  final double weeklyTariff;
+  final ValueChanged<int> onChanged;
+
+  const _WeeksSelector({
+    required this.weeks,
+    required this.weeklyTariff,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardGrey),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '¿Cuántas semanas quieres pagar?',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'La primera semana es obligatoria; las demás quedan pagadas por adelantado '
+            '(\$${weeklyTariff.toStringAsFixed(2)} cada una).',
+            style: const TextStyle(fontSize: 12.5, color: AppColors.muted, height: 1.3),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _StepBtn(icon: Icons.remove, onTap: weeks > 1 ? () => onChanged(weeks - 1) : null),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '$weeks ${weeks == 1 ? 'semana' : 'semanas'}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                  ),
+                ),
+              ),
+              _StepBtn(icon: Icons.add, onTap: () => onChanged(weeks + 1)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _StepBtn({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Material(
+      color: enabled ? AppColors.primary50 : AppColors.cardGrey,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, size: 20, color: enabled ? AppColors.primary : AppColors.muted),
+        ),
       ),
     );
   }

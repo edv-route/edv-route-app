@@ -120,6 +120,11 @@ class ChecklistController extends ChangeNotifier {
     return false;
   }
 
+  /// A short-lived signed URL to preview a document's uploaded file (fetched on
+  /// demand; the URL expires quickly).
+  Future<String> documentFileUrl(String documentId) =>
+      _repository.documentFileUrl(documentId);
+
   void clearActionError() {
     if (_actionError != null) {
       _actionError = null;

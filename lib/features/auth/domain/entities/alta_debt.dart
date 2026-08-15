@@ -32,6 +32,16 @@ class AltaDebt {
 
   String get totalLabel => '\$${totalUsd.toStringAsFixed(2)}';
 
+  /// The weekly tariff amount from the breakdown (the "Tarifa de la semana" line),
+  /// used to price advance weeks (Forma A). Null when there is no weekly line
+  /// (then advancing weeks is not offered).
+  double? get weeklyTariffUsd {
+    for (final it in items) {
+      if (it.label.toLowerCase().contains('semana')) return it.amountUsd;
+    }
+    return null;
+  }
+
   factory AltaDebt.fromJson(Map<String, dynamic> json) => AltaDebt(
         totalUsd: double.tryParse('${json['totalUsd']}') ?? 0,
         items: (json['items'] as List<dynamic>? ?? const [])

@@ -59,10 +59,11 @@ class ChecklistDocument {
   /// without attaching the file). Still needs the applicant to upload it.
   bool get needsFile => documentId != null && !hasFile;
 
-  /// The applicant can upload/replace the file: no slot yet, slot without a file,
-  /// or a rejected document that must be re-uploaded. (Approved/pending-with-file
-  /// are left alone.)
-  bool get canUpload => isMissing || needsFile || isRejected;
+  /// The applicant can upload/replace the file at any time UNTIL it is approved:
+  /// missing, without a file, under review (pending) or rejected. Once approved it
+  /// is locked in the app — replacing it would invalidate the verdict, so that's
+  /// the office's job (the backend still guards this server-side).
+  bool get canUpload => !isApproved;
 
   /// The applicant still has to act on this item: a required document missing or
   /// without its file, or any document that was rejected.
@@ -150,6 +151,17 @@ class Checklist {
   /// Nothing left for the applicant to do: has a vehicle, no required doc missing,
   /// nothing rejected. (Final approval is still the admin's call.)
   bool get isReadyForReview => pendingActions == 0;
+
+  // --- Section summaries for the hub cards (counts only; the UI formats the
+  //     Spanish label from these). --------------------------------------------
+  int get driverTotal => driverDocuments.length;
+  int get driverApproved => driverDocuments.where((d) => d.isApproved).length;
+  int get driverRejected => driverDocuments.where((d) => d.isRejected).length;
+  int get driverActionable => driverDocuments.where((d) => d.needsAction).length;
+
+  int get vehicleCount => vehicles.length;
+  int get vehiclesApproved => vehicles.where((v) => v.isApproved).length;
+  int get vehiclesActionable => vehicles.where((v) => v.needsAction).length;
 
   factory Checklist.fromJson(Map<String, dynamic> json) => Checklist(
         driverDocuments: (json['driverDocuments'] as List<dynamic>? ?? const [])

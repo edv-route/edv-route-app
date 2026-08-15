@@ -46,13 +46,13 @@ class AltaPaymentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> submit(PaymentCapture capture, {required bool acceptedTerms}) async {
+  Future<bool> submit(PaymentCapture capture, {required bool acceptedTerms, int weeks = 1}) async {
     if (_submitting) return false;
     _submitting = true;
     _error = null;
     notifyListeners();
     try {
-      await _repository.submitPayment(capture, acceptedTerms: acceptedTerms);
+      await _repository.submitPayment(capture, acceptedTerms: acceptedTerms, weeks: weeks);
       _submitted = true;
       _submitting = false;
       notifyListeners();
