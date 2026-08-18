@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/money.dart';
 
 import '../../../../core/di.dart';
 import '../../../../routing/app_routes.dart';
@@ -84,7 +85,7 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
     final item = await showPaymentSheet(
       context,
       methods: _controller.methods,
-      totalLabel: '\$${total.toStringAsFixed(2)}',
+      totalLabel: formatUsd(total),
     );
     if (item == null || !mounted) return;
     final ok = await _controller.submit(
@@ -246,7 +247,7 @@ class _DebtCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '\$${total.toStringAsFixed(2)}',
+                formatUsd(total),
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary700),
               ),
             ],
@@ -272,7 +273,7 @@ class _Line extends StatelessWidget {
           child: Text(label, style: const TextStyle(fontSize: 14, color: AppColors.ink)),
         ),
         Text(
-          '\$${amount.toStringAsFixed(2)}',
+          formatUsd(amount),
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink),
         ),
       ],
@@ -312,7 +313,7 @@ class _WeeksSelector extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'La primera semana es obligatoria; las demás quedan pagadas por adelantado '
-            '(\$${weeklyTariff.toStringAsFixed(2)} cada una).',
+            '(${formatUsd(weeklyTariff)} cada una).',
             style: const TextStyle(fontSize: 12.5, color: AppColors.muted, height: 1.3),
           ),
           const SizedBox(height: 12),

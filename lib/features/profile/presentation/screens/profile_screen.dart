@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/money.dart';
 
 import '../../../../core/di.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/utils/date_format.dart';
+import '../../../../domain/entities/alta_debt.dart';
 import '../../../../shared/widgets/gradient_header.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../domain/entities/driver.dart';
@@ -361,7 +363,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const _Pill(label: 'Penalizado', bg: AppColors.primary100, fg: AppColors.primary800);
     }
     if (debt.hasDebt) {
-      return const _Pill(label: 'Debes', bg: AppColors.primary100, fg: AppColors.primary800);
+      final weeks = account?.weeksOwed ?? 0;
+      return _Pill(
+        label: weeks > 0 ? 'Debes $weeks ${weeks == 1 ? 'semana' : 'semanas'}' : 'Debes',
+        bg: AppColors.primary100,
+        fg: AppColors.primary800,
+      );
     }
     return const _Pill(label: 'Al día', bg: Color(0xFFDCFCE7), fg: Color(0xFF166534));
   }
@@ -387,16 +394,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
     if (debt.hasDebt) {
+      final lines = _groupedDebt(debt);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final it in debt.items)
+          // Two identical "Tarifa de la semana" rows told the driver nothing: he
+          // could not tell he was two weeks behind. This says it in words first.
+          _debtHeadline(lines),
+          const SizedBox(height: 12),
+          for (final line in lines)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
-                  Expanded(child: Text(it.label, style: const TextStyle(fontSize: 13, color: AppColors.ink))),
-                  Text('\$${it.amountUsd.toStringAsFixed(2)}',
+                  Expanded(
+                    child: Text(
+                      line.count > 1 ? '${line.label}  ×${line.count}' : line.label,
+                      style: const TextStyle(fontSize: 13, color: AppColors.ink),
+                    ),
+                  ),
+                  Text(formatUsd(line.amountUsd),
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink)),
                 ],
               ),
@@ -436,6 +453,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Repeated concepts collapsed into one line with a count: a driver two weeks
+  /// behind saw the same row twice and read it as a glitch, not as two weeks.
+  List<_DebtLine> _groupedDebt(AltaDebt debt) {
+    final grouped = <String, _DebtLine>{};
+    for (final item in debt.items) {
+      final current = grouped[item.label];
+      grouped[item.label] = _DebtLine(
+        label: item.label,
+        count: (current?.count ?? 0) + 1,
+        amountUsd: (current?.amountUsd ?? 0) + item.amountUsd,
+      );
+    }
+    return grouped.values.toList();
+  }
+
+  /// "Debes 2 semanas de tarifa y tu membresía" — built from the very lines shown
+  /// below, so the sentence and the breakdown can never disagree.
+  Widget _debtHeadline(List<_DebtLine> lines) {
+    final parts = lines.map((l) => l.phrase).toList();
+    final text = parts.length <= 1
+        ? (parts.isEmpty ? 'Tienes pagos pendientes' : 'Debes ${parts.first}')
+        : 'Debes ${parts.sublist(0, parts.length - 1).join(', ')} y ${parts.last}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primary50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primary100),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, size: 18, color: AppColors.primary700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 13.5,
+                height: 1.3,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Coverage detail: until when he is paid up, what he pays next and when, and
   /// — if he is penalized and already settled — when the office reactivates him.
   /// Absent when the standing could not be loaded (the debt card still works).
@@ -445,14 +512,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final rows = <(IconData, String)>[];
     if (account.paidUntil != null) {
-      rows.add((Icons.event_available_outlined, 'Cubierto hasta el ${formatDisplayDate(account.paidUntil!)}'));
+      // A date in the past is NOT coverage: it is the day it ran out, and it is
+      // usually the reason he owes. Saying "cubierto hasta" there reads as if he
+      // were fine.
+      final expired = account.paidUntil!.isBefore(DateTime.now());
+      rows.add((
+        expired ? Icons.event_busy_outlined : Icons.event_available_outlined,
+        expired
+            ? 'Tu semana pagada venció el ${formatDisplayDate(account.paidUntil!)}'
+            : 'Cubierto hasta el ${formatDisplayDate(account.paidUntil!)}',
+      ));
     }
     final amount = account.nextAmountUsd;
     final date = account.nextChargeDate;
     if (date != null) {
       // An ISSUED charge is already payable; one not issued yet is only announced.
       final verb = account.upcoming != null ? 'Próximo pago' : 'Próximo cobro';
-      final money = amount == null ? '' : ' de \${amount.toStringAsFixed(2)}';
+      final money = amount == null ? '' : ' de ${formatUsd(amount)}';
       rows.add((Icons.schedule, '$verb$money el ${formatDisplayDate(date)}'));
     }
     if (account.awaitingReactivation) {
@@ -549,6 +625,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 /// Colored pill for the account standing.
+/// One concept of the debt after grouping its repeats (2 weeks = one line, ×2).
+class _DebtLine {
+  final String label;
+  final int count;
+  final double amountUsd;
+
+  const _DebtLine({required this.label, required this.count, required this.amountUsd});
+
+  /// The concept in words, for the headline sentence.
+  String get phrase {
+    final plural = count > 1;
+    if (label.startsWith('Tarifa')) return plural ? '$count semanas de tarifa' : '1 semana de tarifa';
+    if (label.startsWith('Penaliza')) return plural ? '$count penalizaciones' : '1 penalización';
+    if (label.startsWith('Membres')) return 'tu membresía';
+    return plural ? '$count × $label' : label;
+  }
+}
+
 class _Pill extends StatelessWidget {
   final String label;
   final Color bg;

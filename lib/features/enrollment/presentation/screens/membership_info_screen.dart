@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/money.dart';
 
 import '../../../../core/di.dart';
 import '../../../../routing/app_routes.dart';
@@ -140,7 +141,7 @@ class _MembershipCard extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(
-                '\$${membership.priceUsd.toStringAsFixed(2)}',
+                formatUsd(membership.priceUsd),
                 style: const TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,

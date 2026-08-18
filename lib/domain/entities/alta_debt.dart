@@ -3,6 +3,8 @@
 // per-line breakdown (membership, tariff weeks, penalty) and whether a payment
 // is already awaiting admin review.
 
+import '../../core/utils/money.dart';
+
 /// One line of the debt breakdown.
 class AltaDebtItem {
   final String label;
@@ -30,7 +32,7 @@ class AltaDebt {
 
   bool get hasDebt => totalUsd > 0;
 
-  String get totalLabel => '\$${totalUsd.toStringAsFixed(2)}';
+  String get totalLabel => formatUsd(totalUsd);
 
   /// The weekly tariff amount from the breakdown (the "Tarifa de la semana" line),
   /// used to price advance weeks (Forma A). Null when there is no weekly line
