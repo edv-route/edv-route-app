@@ -2,7 +2,7 @@
     <!-- Network calls to the EDV backend (release talks HTTPS to Railway). -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="edv_route_mobile"
+        android:label="EDV Route"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

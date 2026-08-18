@@ -15,7 +15,11 @@ import 'vehicle_detail_screen.dart';
 class VehiclesListScreen extends StatefulWidget {
   final ChecklistController controller;
 
-  const VehiclesListScreen({super.key, required this.controller});
+  /// Whether the "add vehicle" action is offered. false in read-only contexts
+  /// (e.g. an operating driver browsing his vehicles from the profile).
+  final bool allowAdd;
+
+  const VehiclesListScreen({super.key, required this.controller, this.allowAdd = true});
 
   @override
   State<VehiclesListScreen> createState() => _VehiclesListScreenState();
@@ -103,18 +107,20 @@ class _VehiclesListScreenState extends State<VehiclesListScreen> {
                 trailing: VehicleBadge(status: v.approvalStatus),
                 onTap: () => _openDetail(v),
               ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _controller.savingVehicle ? null : _addVehicle,
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(checklist.hasVehicle ? 'Agregar otro vehículo' : 'Agregar vehículo'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.fieldBorder),
-              minimumSize: const Size(0, 48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          if (widget.allowAdd) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _controller.savingVehicle ? null : _addVehicle,
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(checklist.hasVehicle ? 'Agregar otro vehículo' : 'Agregar vehículo'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.fieldBorder),
+                minimumSize: const Size(0, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

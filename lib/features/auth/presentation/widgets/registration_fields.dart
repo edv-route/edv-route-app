@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/utils/date_format.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../theme/app_colors.dart';
@@ -232,7 +234,7 @@ class DateField extends StatelessWidget {
                 Text(
                   v == null
                       ? 'Seleccionar fecha'
-                      : '${v.day.toString().padLeft(2, '0')}/${v.month.toString().padLeft(2, '0')}/${v.year}',
+                      : formatDisplayDate(v),
                   style: TextStyle(color: v == null ? AppColors.muted : AppColors.ink, fontSize: 15),
                 ),
               ],

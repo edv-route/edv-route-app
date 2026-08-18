@@ -42,6 +42,14 @@ class ApiClient {
   Future<Map<String, dynamic>> get(String path, {String? token}) async =>
       _asMap(await _send('GET', path, token: token));
 
+  /// Partial update — the driver editing his own data.
+  Future<Map<String, dynamic>> patch(
+    String path,
+    Map<String, dynamic> body, {
+    String? token,
+  }) async =>
+      _asMap(await _send('PATCH', path, body: body, token: token));
+
   /// GET whose payload is a JSON array (e.g. the requirement / payment catalogs).
   Future<List<dynamic>> getList(String path, {String? token}) async =>
       (await _send('GET', path, token: token)) as List<dynamic>? ?? const [];

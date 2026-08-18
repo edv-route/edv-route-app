@@ -5,8 +5,8 @@ import '../../../auth/domain/entities/driver.dart';
 import 'dashboard_screen.dart';
 import 'profile_screen.dart';
 
-/// Authenticated driver container: two tabs (Inicio / Perfil) behind a bottom
-/// navigation bar. Kept to two tabs for now; Historial/Agendados come later.
+/// Authenticated driver container: two tabs (Inicio / Perfil) behind a floating
+/// "island" bottom nav. Kept to two tabs for now; Historial/Agendados come later.
 class DriverShell extends StatefulWidget {
   final Driver driver;
 
@@ -29,37 +29,100 @@ class _DriverShellState extends State<DriverShell> {
           ProfileScreen(driver: widget.driver),
         ],
       ),
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          backgroundColor: Colors.white,
-          indicatorColor: AppColors.gold100,
-          labelTextStyle: const WidgetStatePropertyAll(
-            TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      bottomNavigationBar: _FloatingNav(
+        index: _index,
+        onSelected: (i) => setState(() => _index = i),
+      ),
+    );
+  }
+}
+
+/// Floating "island" bottom navigation: a brand-red rounded pill, detached from
+/// the screen edges, with a gold-highlighted active tab (modern-app style).
+class _FloatingNav extends StatelessWidget {
+  final int index;
+  final ValueChanged<int> onSelected;
+
+  const _FloatingNav({required this.index, required this.onSelected});
+
+  static const List<({IconData icon, String label})> _tabs = [
+    (icon: Icons.home_rounded, label: 'Inicio'),
+    (icon: Icons.person_rounded, label: 'Perfil'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Container(
+          height: 64,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(26),
           ),
-          iconTheme: WidgetStateProperty.resolveWith(
-            (states) => IconThemeData(
-              color: states.contains(WidgetState.selected)
-                  ? AppColors.primary
-                  : AppColors.muted,
-            ),
+          child: Row(
+            children: [
+              for (var i = 0; i < _tabs.length; i++)
+                Expanded(
+                  child: _NavItem(
+                    icon: _tabs[i].icon,
+                    label: _tabs[i].label,
+                    selected: i == index,
+                    onTap: () => onSelected(i),
+                  ),
+                ),
+            ],
           ),
         ),
-        child: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: (i) => setState(() => _index = i),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'Inicio',
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const inactive = Colors.white70;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.gold : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
             ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Perfil',
+            child: Icon(icon, size: 20, color: selected ? const Color(0xFF661212) : inactive),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: selected ? AppColors.gold : inactive,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

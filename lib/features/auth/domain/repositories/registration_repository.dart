@@ -1,10 +1,13 @@
 import '../../data/models/register_request.dart';
+import '../entities/account_status.dart';
 import '../entities/alta_debt.dart';
 import '../entities/checklist.dart';
+import '../entities/driver.dart';
 import '../entities/enrollment_cost.dart';
 import '../entities/payment_method_option.dart';
 import '../entities/picked_image.dart';
 import '../entities/requirement.dart';
+import '../entities/vehicle_full.dart';
 import '../entities/vehicle_type_option.dart';
 
 /// Payment captured for the alta: the method + payer metadata + one receipt photo.
@@ -54,6 +57,10 @@ abstract interface class RegistrationRepository {
   /// their review state). Requires an active session (token from register/login).
   Future<Checklist> loadChecklist();
 
+  /// The driver's vehicles with full detail + signed photo URLs (GET /me/vehicles),
+  /// for the profile's vehicle catalog/detail.
+  Future<List<VehicleFull>> loadVehicles();
+
   /// Creates a document slot on the applicant's solicitud (POST /me/documents) and
   /// returns its id, so its file can then be attached with [uploadDocument].
   /// [vehicleId] is required for vehicle requirements, null for driver ones.
@@ -81,6 +88,27 @@ abstract interface class RegistrationRepository {
 
   /// The driver's alta/arrears debt (GET /me/debt), for the deferred payment.
   Future<AltaDebt> loadDebt();
+
+  /// The driver's account standing (GET /me/account): coverage, next charge and
+  /// arrears — what the profile shows above the debt breakdown.
+  Future<AccountStatus> loadAccount();
+
+  /// The driver's own address, to prefill the edit form (GET /me/editable).
+  Future<String?> loadAddress();
+
+  /// Self-service edit of the driver's OWN data (PATCH /me). Only these fields
+  /// are editable: names and national id are the admin-verified identity.
+  /// Changing the password requires [currentPassword].
+  Future<Driver> updateOwnProfile({
+    String? phone,
+    String? email,
+    String? address,
+    String? password,
+    String? currentPassword,
+  });
+
+  /// Replaces the profile photo (POST /me/photo) and returns its signed URL.
+  Future<String?> uploadProfilePhoto(PickedImage image);
 
   /// Submits the DEFERRED alta payment (purpose=`debt`, after approval): settles
   /// the whole owed debt and requires the terms & conditions acceptance. Left

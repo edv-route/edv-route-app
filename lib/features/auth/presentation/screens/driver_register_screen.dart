@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/utils/date_format.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/di.dart';
@@ -157,7 +159,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
         middleName: _titleCase(_middleName.text),
         lastName: _titleCase(_lastName.text),
         secondLastName: _titleCase(_secondLastName.text),
-        birthDate: _birthDate == null ? null : _formatDate(_birthDate!),
+        birthDate: _birthDate == null ? null : formatApiDate(_birthDate!),
         phone: _composePersonPhone(),
         email: _email.text.trim(),
         address: _address.text.trim(),
@@ -173,9 +175,6 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     if (local.isEmpty || local.length != 7) return null;
     return '+58$_phoneOperator$local';
   }
-
-  String _formatDate(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   /// Capitalizes the first letter of each word, leaving the rest untouched (so
   /// acronyms like "BMW" survive). Empty input stays empty.

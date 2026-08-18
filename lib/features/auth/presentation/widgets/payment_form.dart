@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/utils/date_format.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../shared/widgets/brand_text_field.dart';
@@ -119,9 +121,6 @@ class PaymentFormState extends State<PaymentForm> {
     return '+58$d';
   }
 
-  String _formatDate(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
   /// Validates the whole payment. Returns the [PaymentDraftItem] on success, or a
   /// human message to show. Called by the screen when submitting.
   PaymentValidation readAndValidate() {
@@ -159,7 +158,7 @@ class PaymentFormState extends State<PaymentForm> {
       item: PaymentDraftItem(
         paymentMethodId: m.id,
         methodLabel: m.name,
-        paidOn: _formatDate(_paidOn!),
+        paidOn: formatApiDate(_paidOn!),
         reference: _needsReference(type) ? _reference.text.trim() : null,
         payerBank: _needsBank(type) ? _payerBank : null,
         payerPhone: _needsPayerPhoneId(type) ? _composePayerPhone() : null,

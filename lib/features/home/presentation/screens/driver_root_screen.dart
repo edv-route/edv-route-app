@@ -23,6 +23,16 @@ class DriverRootScreen extends StatelessWidget {
         return const ChecklistHubScreen();
       case DriverStatus.approved:
         return AltaPaymentScreen(driver: driver);
+      // A driver in arrears — even a PENALIZED one — enters the app (decision
+      // 2026-08-18): he must be able to see what he owes and pay it. What he
+      // loses is the WORK: no trips, no benefits (and more restrictions to come).
+      // That gate belongs to each feature, keyed on `DriverStatus.canOperate`,
+      // never to the entrance: locking him out of the app would also lock him
+      // out of the only screen where he can settle his debt.
+      case DriverStatus.overdue:
+      case DriverStatus.penalized:
+      case DriverStatus.paused:
+      case DriverStatus.scheduled:
       case DriverStatus.unknown:
         return DriverShell(driver: driver);
       case DriverStatus.pending:

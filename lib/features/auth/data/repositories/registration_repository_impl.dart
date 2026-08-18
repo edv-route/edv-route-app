@@ -1,15 +1,19 @@
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/storage/token_storage.dart';
+import '../../domain/entities/account_status.dart';
 import '../../domain/entities/alta_debt.dart';
 import '../../domain/entities/checklist.dart';
+import '../../domain/entities/driver.dart';
 import '../../domain/entities/enrollment_cost.dart';
 import '../../domain/entities/payment_method_option.dart';
 import '../../domain/entities/picked_image.dart';
 import '../../domain/entities/requirement.dart';
+import '../../domain/entities/vehicle_full.dart';
 import '../../domain/entities/vehicle_type_option.dart';
 import '../../domain/repositories/registration_repository.dart';
 import '../datasources/registration_remote_data_source.dart';
+import '../models/driver_dto.dart';
 import '../models/register_request.dart';
 
 class RegistrationRepositoryImpl implements RegistrationRepository {
@@ -66,6 +70,13 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
     final token = await _requireToken();
     final data = await _remote.checklist(token: token);
     return Checklist.fromJson(data);
+  }
+
+  @override
+  Future<List<VehicleFull>> loadVehicles() async {
+    final token = await _requireToken();
+    final list = await _remote.vehicles(token: token);
+    return list.map((e) => VehicleFull.fromJson((e as Map).cast<String, dynamic>())).toList();
   }
 
   @override
@@ -164,6 +175,47 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
       throw const ApiException('Sesión no iniciada. Vuelve a empezar el registro.');
     }
     return token;
+  }
+
+  @override
+  Future<AccountStatus> loadAccount() async {
+    final token = await _requireToken();
+    return AccountStatus.fromJson(await _remote.account(token: token));
+  }
+
+  @override
+  Future<String?> loadAddress() async {
+    final token = await _requireToken();
+    final json = await _remote.editableData(token: token);
+    return json['address'] as String?;
+  }
+
+  @override
+  Future<Driver> updateOwnProfile({
+    String? phone,
+    String? email,
+    String? address,
+    String? password,
+    String? currentPassword,
+  }) async {
+    final token = await _requireToken();
+    // Only the touched fields travel: the backend keeps whatever is absent, so
+    // sending nulls would wipe data the driver never opened.
+    final body = <String, dynamic>{
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+      if (address != null) 'address': address,
+      if (password != null) 'password': password,
+      if (password != null && currentPassword != null) 'currentPassword': currentPassword,
+    };
+    return driverFromJson(await _remote.updateMe(body, token: token));
+  }
+
+  @override
+  Future<String?> uploadProfilePhoto(PickedImage image) async {
+    final token = await _requireToken();
+    final json = await _remote.uploadPhoto(_part(image), token: token);
+    return json['photoUrl'] as String?;
   }
 
   MultipartPart _part(PickedImage img) =>

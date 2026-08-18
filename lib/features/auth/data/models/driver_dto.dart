@@ -11,4 +11,6 @@ Driver driverFromJson(Map<String, dynamic> json) => Driver(
       email: json['email'] as String?,
       photoUrl: json['photoUrl'] as String?,
       isAvailable: json['isAvailable'] as bool? ?? false,
+      tariffStarted: json['tariffStarted'] as bool? ?? false,
+      avgRating: json['avgRating'] == null ? null : double.tryParse('${json['avgRating']}'),
     );

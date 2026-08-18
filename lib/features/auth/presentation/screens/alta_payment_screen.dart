@@ -39,9 +39,13 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
     _controller.load().then((_) {
       if (!mounted) return;
       final debt = _controller.debt;
-      // Nothing to pay and nothing under review → an operating driver: go straight
-      // to the app shell instead of showing him a payment screen every launch.
-      if (debt != null && !debt.hasDebt && !debt.hasPendingPayment) {
+      // Settled AND the admin already set the tariff start → an operating driver:
+      // go straight to the app shell. Settled but the tariff hasn't started yet →
+      // the waiting screen (built below), never the home.
+      if (debt != null &&
+          !debt.hasDebt &&
+          !debt.hasPendingPayment &&
+          widget.driver.tariffStarted) {
         _enterApp();
       }
     });
@@ -124,6 +128,12 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
                   return _PendingState(onLogout: _logout);
                 }
                 if (!debt.hasDebt) {
+                  // Paid, but the admin hasn't set the tariff start yet: the driver
+                  // is approved and does NOT operate until then — a waiting screen,
+                  // never the app home.
+                  if (!widget.driver.tariffStarted) {
+                    return _WaitingStartState(onLogout: _logout);
+                  }
                   return _SettledState(onEnter: _enterApp);
                 }
                 return _payContent(debt);
@@ -407,6 +417,49 @@ class _PendingState extends StatelessWidget {
             const Text(
               'Un administrador lo verificará y activaremos tu cuenta. '
               'Te avisaremos cuando esté listo.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: AppColors.muted, height: 1.35),
+            ),
+            const SizedBox(height: 24),
+            TextButton.icon(
+              onPressed: onLogout,
+              icon: const Icon(Icons.logout, size: 18),
+              label: const Text('Cerrar sesión'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary900),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown when the alta is paid but the admin hasn't set the tariff start yet: the
+/// driver is approved but does NOT operate until the office activates him. (The
+/// countdown for a scheduled start will live in the app home later.)
+class _WaitingStartState extends StatelessWidget {
+  final Future<void> Function() onLogout;
+
+  const _WaitingStartState({required this.onLogout});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.verified, color: Color(0xFF16A34A), size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              '¡Fuiste aprobado!',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tu pago está confirmado. Solo falta que la oficina active tu cuenta '
+              'para que puedas empezar a trabajar. Te avisaremos apenas esté lista.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: AppColors.muted, height: 1.35),
             ),
