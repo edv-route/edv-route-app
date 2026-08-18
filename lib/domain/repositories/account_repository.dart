@@ -27,6 +27,10 @@ abstract interface class AccountRepository {
     String? currentPassword,
   });
 
+  /// Puts him on or off duty. Going OFF is always allowed; going ON is refused
+  /// by the backend when his status does not let him operate (penalized/paused).
+  Future<bool> setAvailability(bool available);
+
   /// Replaces his profile photo and returns its (signed, temporary) URL.
   Future<String?> uploadProfilePhoto(PickedImage image);
 }

@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 
-import '../../../../shared/widgets/auth_header.dart';
-import '../../../../theme/app_colors.dart';
+import '../../../../shared/widgets/driver_header.dart';
 import '../../../../domain/entities/driver.dart';
 import '../widgets/dashboard_tile.dart';
+import '../../../profile/presentation/availability_action.dart';
 
 /// Driver home tab — intentionally simple for now: a greeting, an availability
 /// card and a few entry tiles. Real data/actions are wired in later phases.
 class DashboardScreen extends StatefulWidget {
   final Driver driver;
 
-  const DashboardScreen({super.key, required this.driver});
+  /// The shell owns the driver; this reports a change back to it.
+  final ValueChanged<Driver> onDriverChanged;
+
+  const DashboardScreen({super.key, required this.driver, required this.onDriverChanged});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  late bool _available = widget.driver.isAvailable;
+  bool _savingAvailability = false;
 
   void _soon(String message) {
     ScaffoldMessenger.of(context)
@@ -25,29 +28,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _setAvailability(bool value) async {
+    setState(() => _savingAvailability = true);
+    await applyAvailability(
+      context: context,
+      driver: widget.driver,
+      available: value,
+      onDriverChanged: widget.onDriverChanged,
+    );
+    if (mounted) setState(() => _savingAvailability = false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final firstName = widget.driver.fullName.split(' ').first;
-
-    return ListView(
-      padding: EdgeInsets.zero,
+    // Header pinned OUTSIDE the scroll, like Perfil: otherwise it slides under
+    // the status bar on notch phones.
+    return Column(
       children: [
-        AuthHeader(
-          title: 'Hola, $firstName',
-          subtitle: 'Bienvenido a tu panel',
+        DriverHeader(
+          driver: widget.driver,
+          available: widget.driver.isAvailable,
+          savingAvailability: _savingAvailability,
+          onAvailabilityChanged: _savingAvailability ? null : _setAvailability,
         ),
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
             children: [
-              _AvailabilityCard(
-                available: _available,
-                onChanged: (v) {
-                  setState(() => _available = v);
-                  _soon('La sincronización de disponibilidad llega pronto.');
-                },
-              ),
-              const SizedBox(height: 16),
               DashboardTile(
                 icon: Icons.assignment_outlined,
                 title: 'Solicitudes',
@@ -72,53 +79,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _AvailabilityCard extends StatelessWidget {
-  final bool available;
-  final ValueChanged<bool> onChanged;
-
-  const _AvailabilityCard({required this.available, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.gold100,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Estado',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: AppColors.primary900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  available ? 'Disponible' : 'No disponible',
-                  style: const TextStyle(color: AppColors.gold900, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: available,
-            onChanged: onChanged,
-            activeTrackColor: const Color(0xFF16A34A),
-          ),
-        ],
-      ),
     );
   }
 }

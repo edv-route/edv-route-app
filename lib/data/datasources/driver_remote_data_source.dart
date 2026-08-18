@@ -49,6 +49,10 @@ class DriverRemoteDataSource {
   Future<Map<String, dynamic>> updateMe(Map<String, dynamic> body, {required String token}) =>
       _client.patch('/driver-auth/me', body, token: token);
 
+  /// Authenticated: puts the driver on or off duty.
+  Future<Map<String, dynamic>> setAvailability(bool available, {required String token}) =>
+      _client.patch('/driver-auth/me/availability', {'available': available}, token: token);
+
   /// Authenticated: replaces the profile photo; returns the new signed URL.
   Future<Map<String, dynamic>> uploadPhoto(MultipartPart file, {required String token}) =>
       _client.postMultipart('/driver-auth/me/photo', files: [file], token: token);

@@ -5,7 +5,7 @@ import '../../../../core/di.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../../domain/entities/alta_debt.dart';
-import '../../../../shared/widgets/gradient_header.dart';
+import '../../../../shared/widgets/driver_header.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../domain/entities/driver.dart';
 import '../../../../domain/entities/enrollment_cost.dart';
@@ -15,6 +15,7 @@ import '../../../enrollment/presentation/screens/documents_list_screen.dart';
 import '../../../enrollment/presentation/screens/vehicles_list_screen.dart';
 import '../../../../shared/widgets/checklist_widgets.dart';
 import '../../../../shared/widgets/media_picker.dart';
+import '../availability_action.dart';
 import '../controllers/profile_controller.dart';
 import './edit_profile_screen.dart';
 import '../../../../shared/actions/logout_action.dart';
@@ -26,17 +27,16 @@ import '../../../../shared/actions/logout_action.dart';
 class ProfileScreen extends StatefulWidget {
   final Driver driver;
 
-  const ProfileScreen({super.key, required this.driver});
+  /// The shell owns the driver; this reports edits (data, photo, duty) back.
+  final ValueChanged<Driver> onDriverChanged;
+
+  const ProfileScreen({super.key, required this.driver, required this.onDriverChanged});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  /// Local copy: editing the data or the photo updates the profile in place,
-  /// without forcing the driver to log in again to see his own change.
-  late Driver _driver = widget.driver;
-
   late final ProfileController _profile =
       ProfileController(
         Dependencies.instance.accountRepository,
@@ -62,12 +62,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  String get _initials {
-    final parts = _driver.fullName.trim().split(RegExp(r'\s+'));
-    final letters = parts.take(2).map((p) => p.isEmpty ? '' : p[0]).join();
-    return letters.isEmpty ? '?' : letters.toUpperCase();
-  }
-
   void _openDocuments() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => DocumentsListScreen(controller: _checklist)),
@@ -76,21 +70,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _openVehicles() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => VehiclesListScreen(controller: _checklist, allowAdd: false)),
+      MaterialPageRoute(builder: (_) => VehiclesListScreen(controller: _checklist)),
     );
   }
 
   void _openPayment() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AltaPaymentScreen(driver: _driver)),
+      MaterialPageRoute(builder: (_) => AltaPaymentScreen(driver: widget.driver)),
     );
+  }
+
+  bool _savingAvailability = false;
+
+  Future<void> _setAvailability(bool value) async {
+    setState(() => _savingAvailability = true);
+    await applyAvailability(
+      context: context,
+      driver: widget.driver,
+      available: value,
+      onDriverChanged: widget.onDriverChanged,
+    );
+    if (mounted) setState(() => _savingAvailability = false);
   }
 
   Future<void> _openEdit() async {
     final updated = await Navigator.of(context).push<Driver>(
-      MaterialPageRoute(builder: (_) => EditProfileScreen(driver: _driver)),
+      MaterialPageRoute(builder: (_) => EditProfileScreen(driver: widget.driver)),
     );
-    if (updated != null && mounted) setState(() => _driver = updated);
+    if (updated != null && mounted) widget.onDriverChanged(updated);
   }
 
   /// Picks a photo and replaces the profile one. The backend answers with the
@@ -101,7 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final url = await _profile.uploadPhoto(image);
       if (!mounted) return;
-      setState(() => _driver = _driver.copyWith(photoUrl: url));
+      widget.onDriverChanged(widget.driver.copyWith(photoUrl: url));
     } on ApiException catch (e) {
       if (mounted) _snack(e.message);
     } catch (_) {
@@ -121,7 +128,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // overlap on notch/punch-hole phones across Android versions.
     return Column(
       children: [
-        _header(),
+        DriverHeader(
+          driver: widget.driver,
+          available: widget.driver.isAvailable,
+          savingAvailability: _savingAvailability,
+          onAvailabilityChanged: _savingAvailability ? null : _setAvailability,
+          onEdit: _openEdit,
+          onPhotoTap: _changePhoto,
+          photoBusy: _profile.uploadingPhoto,
+        ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
@@ -163,9 +178,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 8),
               _InfoCard(
                 rows: [
-                  ('Cédula', _driver.nationalId ?? '—'),
-                  ('Teléfono', _driver.phone ?? '—'),
-                  ('Correo', _driver.email ?? '—'),
+                  ('Cédula', widget.driver.nationalId ?? '—'),
+                  ('Teléfono', widget.driver.phone ?? '—'),
+                  ('Correo', widget.driver.email ?? '—'),
                 ],
               ),
               const SizedBox(height: 24),
@@ -187,132 +202,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _header() {
-    final driver = _driver;
-    // Availability chip: green when the driver is active/available, orange when not.
-    final available = driver.isAvailable;
-    final chipLabel = available ? 'Activo' : 'Inactivo';
-    final chipColor = available ? const Color(0xFF16A34A) : const Color(0xFFEA580C);
-    final rating = driver.avgRating;
-    return GradientHeader(
-      height: GradientHeader.kStandardHeight,
-      child: Align(
-        alignment: Alignment.bottomLeft,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
-          child: Row(
-            children: [
-              _photoAvatar(driver),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      driver.fullName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 18.5, fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      driver.nationalId ?? '',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12.5),
-                    ),
-                    const SizedBox(height: 7),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                          decoration: BoxDecoration(color: chipColor, borderRadius: BorderRadius.circular(20)),
-                          child: Text(
-                            chipLabel,
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        if (rating != null) ...[
-                          const SizedBox(width: 10),
-                          const Icon(Icons.star, color: AppColors.gold, size: 15),
-                          const SizedBox(width: 3),
-                          Text(
-                            rating.toStringAsFixed(1),
-                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              _editButton(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Avatar + camera badge: tapping it replaces the profile photo. A photo whose
-  /// signed URL has expired falls back to the initials underneath.
-  Widget _photoAvatar(Driver driver) {
-    return GestureDetector(
-      onTap: _profile.uploadingPhoto ? null : _changePhoto,
-      child: Stack(
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.white,
-            foregroundImage: driver.photoUrl != null ? NetworkImage(driver.photoUrl!) : null,
-            child: Text(
-              _initials,
-              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 20),
-            ),
-          ),
-          Positioned(
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: AppColors.gold400,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1.5),
-              ),
-              child: ListenableBuilder(
-                listenable: _profile,
-                builder: (context, _) => _profile.uploadingPhoto
-                    ? const SizedBox(
-                        height: 11,
-                        width: 11,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary900),
-                      )
-                    : const Icon(Icons.photo_camera, size: 11, color: AppColors.primary900),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _editButton() {
-    return TextButton.icon(
-      onPressed: _openEdit,
-      icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.white),
-      label: const Text(
-        'Editar',
-        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
-      ),
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        backgroundColor: Colors.white24,
-        shape: const StadiumBorder(),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
     );
   }
 

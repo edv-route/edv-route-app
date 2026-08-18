@@ -19,14 +19,21 @@ class DriverShell extends StatefulWidget {
 class _DriverShellState extends State<DriverShell> {
   int _index = 0;
 
+  /// The shell owns the driver so both tabs read the SAME one: editing his data
+  /// or his photo in Perfil used to leave Inicio showing the old values, and the
+  /// duty switch existed twice with two separate states.
+  late Driver _driver = widget.driver;
+
+  void _onDriverChanged(Driver updated) => setState(() => _driver = updated);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _index,
         children: [
-          DashboardScreen(driver: widget.driver),
-          ProfileScreen(driver: widget.driver),
+          DashboardScreen(driver: _driver, onDriverChanged: _onDriverChanged),
+          ProfileScreen(driver: _driver, onDriverChanged: _onDriverChanged),
         ],
       ),
       bottomNavigationBar: _FloatingNav(

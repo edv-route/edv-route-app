@@ -70,7 +70,7 @@ class Driver {
 
   /// Locally applies what an edit (or a new photo) returned, so the profile
   /// repaints without a full re-login.
-  Driver copyWith({String? phone, String? email, String? photoUrl}) => Driver(
+  Driver copyWith({String? phone, String? email, String? photoUrl, bool? isAvailable}) => Driver(
         userId: userId,
         fullName: fullName,
         nationalId: nationalId,
@@ -79,7 +79,7 @@ class Driver {
         phone: phone ?? this.phone,
         email: email ?? this.email,
         photoUrl: photoUrl ?? this.photoUrl,
-        isAvailable: isAvailable,
+        isAvailable: isAvailable ?? this.isAvailable,
         tariffStarted: tariffStarted,
         avgRating: avgRating,
       );

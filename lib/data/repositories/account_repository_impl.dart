@@ -50,6 +50,12 @@ class AccountRepositoryImpl extends SessionBoundRepository implements AccountRep
   }
 
   @override
+  Future<bool> setAvailability(bool available) async {
+    final json = await _remote.setAvailability(available, token: await requireToken());
+    return json['isAvailable'] as bool? ?? available;
+  }
+
+  @override
   Future<String?> uploadProfilePhoto(PickedImage image) async {
     final json = await _remote.uploadPhoto(part(image), token: await requireToken());
     return json['photoUrl'] as String?;
