@@ -1,0 +1,604 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/di.dart';
+import '../../../../core/network/api_exception.dart';
+import '../../../../core/utils/date_format.dart';
+import '../../../../shared/widgets/gradient_header.dart';
+import '../../../../theme/app_colors.dart';
+import '../../../../domain/entities/driver.dart';
+import '../../../../domain/entities/enrollment_cost.dart';
+import '../../../enrollment/presentation/controllers/checklist_controller.dart';
+import '../../../enrollment/presentation/screens/alta_payment_screen.dart';
+import '../../../enrollment/presentation/screens/documents_list_screen.dart';
+import '../../../enrollment/presentation/screens/vehicles_list_screen.dart';
+import '../../../../shared/widgets/checklist_widgets.dart';
+import '../../../../shared/widgets/media_picker.dart';
+import '../controllers/profile_controller.dart';
+import './edit_profile_screen.dart';
+import '../../../../shared/actions/logout_action.dart';
+
+/// Driver profile tab for an operating affiliate: identity + rating, account
+/// standing (dues / next payment), navigable documents and vehicles (reusing the
+/// checklist screens in read-only), membership benefits and personal data.
+/// Trips/history are a separate module, not here yet.
+class ProfileScreen extends StatefulWidget {
+  final Driver driver;
+
+  const ProfileScreen({super.key, required this.driver});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  /// Local copy: editing the data or the photo updates the profile in place,
+  /// without forcing the driver to log in again to see his own change.
+  late Driver _driver = widget.driver;
+
+  late final ProfileController _profile =
+      ProfileController(Dependencies.instance.registrationRepository);
+  late final ChecklistController _checklist =
+      ChecklistController(Dependencies.instance.registrationRepository);
+
+  @override
+  void initState() {
+    super.initState();
+    _profile.load();
+    _checklist.load();
+  }
+
+  @override
+  void dispose() {
+    _profile.dispose();
+    _checklist.dispose();
+    super.dispose();
+  }
+
+  String get _initials {
+    final parts = _driver.fullName.trim().split(RegExp(r'\s+'));
+    final letters = parts.take(2).map((p) => p.isEmpty ? '' : p[0]).join();
+    return letters.isEmpty ? '?' : letters.toUpperCase();
+  }
+
+  void _openDocuments() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => DocumentsListScreen(controller: _checklist)),
+    );
+  }
+
+  void _openVehicles() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => VehiclesListScreen(controller: _checklist, allowAdd: false)),
+    );
+  }
+
+  void _openPayment() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AltaPaymentScreen(driver: _driver)),
+    );
+  }
+
+  Future<void> _openEdit() async {
+    final updated = await Navigator.of(context).push<Driver>(
+      MaterialPageRoute(builder: (_) => EditProfileScreen(driver: _driver)),
+    );
+    if (updated != null && mounted) setState(() => _driver = updated);
+  }
+
+  /// Picks a photo and replaces the profile one. The backend answers with the
+  /// fresh signed URL, so the header repaints without reloading the session.
+  Future<void> _changePhoto() async {
+    final image = await pickPhoto(context);
+    if (image == null || !mounted) return;
+    try {
+      final url = await _profile.uploadPhoto(image);
+      if (!mounted) return;
+      setState(() => _driver = _driver.copyWith(photoUrl: url));
+    } on ApiException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (_) {
+      if (mounted) _snack('No se pudo actualizar tu foto. Intenta de nuevo.');
+    }
+  }
+
+  void _snack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    // Header pinned OUTSIDE the scroll so the OS status bar (clock/battery) always
+    // sits over the red header, never over scrolled light content — fixes the
+    // overlap on notch/punch-hole phones across Android versions.
+    return Column(
+      children: [
+        _header(),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            children: [
+              _accountSection(),
+              const SizedBox(height: 16),
+              _sectionLabel('Tu solicitud'),
+              const SizedBox(height: 8),
+              ListenableBuilder(
+                listenable: _checklist,
+                builder: (context, _) {
+                  final c = _checklist.checklist;
+                  return Column(
+                    children: [
+                      ChecklistTile(
+                        icon: Icons.description_outlined,
+                        title: 'Documentos',
+                        subtitle: c == null ? 'Ver tus documentos' : '${c.driverDocuments.length} documentos',
+                        trailing: const Icon(Icons.chevron_right, color: AppColors.muted, size: 20),
+                        onTap: _openDocuments,
+                      ),
+                      ChecklistTile(
+                        icon: Icons.directions_car_outlined,
+                        title: 'Vehículos',
+                        subtitle: c == null
+                            ? 'Ver tus vehículos'
+                            : '${c.vehicleCount} ${c.vehicleCount == 1 ? 'vehículo' : 'vehículos'}',
+                        trailing: const Icon(Icons.chevron_right, color: AppColors.muted, size: 20),
+                        onTap: _openVehicles,
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              _benefitsSection(),
+              const SizedBox(height: 16),
+              _sectionLabel('Tus datos'),
+              const SizedBox(height: 8),
+              _InfoCard(
+                rows: [
+                  ('Cédula', _driver.nationalId ?? '—'),
+                  ('Teléfono', _driver.phone ?? '—'),
+                  ('Correo', _driver.email ?? '—'),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => performLogout(context),
+                  icon: const Icon(Icons.logout, size: 18),
+                  label: const Text('Cerrar sesión'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary, width: 1.5),
+                    minimumSize: const Size.fromHeight(50),
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _header() {
+    final driver = _driver;
+    // Availability chip: green when the driver is active/available, orange when not.
+    final available = driver.isAvailable;
+    final chipLabel = available ? 'Activo' : 'Inactivo';
+    final chipColor = available ? const Color(0xFF16A34A) : const Color(0xFFEA580C);
+    final rating = driver.avgRating;
+    return GradientHeader(
+      height: GradientHeader.kStandardHeight,
+      child: Align(
+        alignment: Alignment.bottomLeft,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+          child: Row(
+            children: [
+              _photoAvatar(driver),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      driver.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 18.5, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      driver.nationalId ?? '',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                    ),
+                    const SizedBox(height: 7),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(color: chipColor, borderRadius: BorderRadius.circular(20)),
+                          child: Text(
+                            chipLabel,
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (rating != null) ...[
+                          const SizedBox(width: 10),
+                          const Icon(Icons.star, color: AppColors.gold, size: 15),
+                          const SizedBox(width: 3),
+                          Text(
+                            rating.toStringAsFixed(1),
+                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              _editButton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Avatar + camera badge: tapping it replaces the profile photo. A photo whose
+  /// signed URL has expired falls back to the initials underneath.
+  Widget _photoAvatar(Driver driver) {
+    return GestureDetector(
+      onTap: _profile.uploadingPhoto ? null : _changePhoto,
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white,
+            foregroundImage: driver.photoUrl != null ? NetworkImage(driver.photoUrl!) : null,
+            child: Text(
+              _initials,
+              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 20),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.gold400,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: ListenableBuilder(
+                listenable: _profile,
+                builder: (context, _) => _profile.uploadingPhoto
+                    ? const SizedBox(
+                        height: 11,
+                        width: 11,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary900),
+                      )
+                    : const Icon(Icons.photo_camera, size: 11, color: AppColors.primary900),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _editButton() {
+    return TextButton.icon(
+      onPressed: _openEdit,
+      icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.white),
+      label: const Text(
+        'Editar',
+        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+      ),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        backgroundColor: Colors.white24,
+        shape: const StadiumBorder(),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
+  Widget _accountSection() {
+    return ListenableBuilder(
+      listenable: _profile,
+      builder: (context, _) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.cardGrey),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Estado de cuenta',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink),
+                    ),
+                  ),
+                  _standingBadge(),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _accountBody(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _standingBadge() {
+    if (_profile.loading || _profile.debt == null) return const SizedBox.shrink();
+    final debt = _profile.debt!;
+    final account = _profile.account;
+    if (debt.hasPendingPayment) {
+      return const _Pill(label: 'Pago en revisión', bg: AppColors.gold100, fg: AppColors.gold800);
+    }
+    // The engine's status wins over the debt total: a penalized driver who
+    // already settled still does NOT operate until his reactivation moment.
+    if (account != null && account.isPenalized) {
+      return const _Pill(label: 'Penalizado', bg: AppColors.primary100, fg: AppColors.primary800);
+    }
+    if (debt.hasDebt) {
+      return const _Pill(label: 'Debes', bg: AppColors.primary100, fg: AppColors.primary800);
+    }
+    return const _Pill(label: 'Al día', bg: Color(0xFFDCFCE7), fg: Color(0xFF166534));
+  }
+
+  Widget _accountBody() {
+    if (_profile.loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final debt = _profile.debt;
+    if (debt == null) {
+      return Text(
+        _profile.error ?? 'No se pudo cargar tu cuenta.',
+        style: const TextStyle(fontSize: 13, color: AppColors.muted),
+      );
+    }
+    if (debt.hasPendingPayment) {
+      return const Text(
+        'Registraste un pago y un administrador lo está revisando. Te avisaremos cuando quede confirmado.',
+        style: TextStyle(fontSize: 13, color: AppColors.ink, height: 1.35),
+      );
+    }
+    if (debt.hasDebt) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final it in debt.items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(child: Text(it.label, style: const TextStyle(fontSize: 13, color: AppColors.ink))),
+                  Text('\$${it.amountUsd.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                ],
+              ),
+            ),
+          const Divider(height: 14),
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Total a pagar', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
+              ),
+              Text(debt.totalLabel,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary700)),
+            ],
+          ),
+          _coverageLines(),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _openPayment,
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary, minimumSize: const Size.fromHeight(46)),
+              child: const Text('Pagar'),
+            ),
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Estás al día con tus pagos.',
+          style: TextStyle(fontSize: 13, color: AppColors.ink, height: 1.35),
+        ),
+        _coverageLines(),
+      ],
+    );
+  }
+
+  /// Coverage detail: until when he is paid up, what he pays next and when, and
+  /// — if he is penalized and already settled — when the office reactivates him.
+  /// Absent when the standing could not be loaded (the debt card still works).
+  Widget _coverageLines() {
+    final account = _profile.account;
+    if (account == null) return const SizedBox.shrink();
+
+    final rows = <(IconData, String)>[];
+    if (account.paidUntil != null) {
+      rows.add((Icons.event_available_outlined, 'Cubierto hasta el ${formatDisplayDate(account.paidUntil!)}'));
+    }
+    final amount = account.nextAmountUsd;
+    final date = account.nextChargeDate;
+    if (date != null) {
+      // An ISSUED charge is already payable; one not issued yet is only announced.
+      final verb = account.upcoming != null ? 'Próximo pago' : 'Próximo cobro';
+      final money = amount == null ? '' : ' de \${amount.toStringAsFixed(2)}';
+      rows.add((Icons.schedule, '$verb$money el ${formatDisplayDate(date)}'));
+    }
+    if (account.awaitingReactivation) {
+      rows.add((
+        Icons.lock_clock,
+        'Ya pagaste. Vuelves a estar activo el ${formatDisplayDate(account.reactivatesAt!)}',
+      ));
+    } else if (account.isPenalized) {
+      rows.add((
+        Icons.report_gmailerrorred_outlined,
+        'Estás penalizado por pasar de ${account.capWeeks} semanas de deuda. Paga para volver a operar.',
+      ));
+    } else if (account.isPaused) {
+      rows.add((Icons.pause_circle_outline, 'Tu cuenta está en pausa. Contacta a la oficina.'));
+    }
+
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(row.$1, size: 15, color: AppColors.muted),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      row.$2,
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.muted, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _benefitsSection() {
+    return ListenableBuilder(
+      listenable: _profile,
+      builder: (context, _) {
+        final MembershipInfo? m = _profile.membership;
+        if (m == null || m.benefits.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 8),
+            _sectionLabel('Beneficios de tu membresía'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.cardGrey),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final b in m.benefits)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(b.name, style: const TextStyle(fontSize: 13.5, color: AppColors.ink)),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _sectionLabel(String text) => Text(
+        text,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.muted),
+      );
+}
+
+/// Colored pill for the account standing.
+class _Pill extends StatelessWidget {
+  final String label;
+  final Color bg;
+  final Color fg;
+
+  const _Pill({required this.label, required this.bg, required this.fg});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+        child: Text(label, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: fg)),
+      );
+}
+
+class _InfoCard extends StatelessWidget {
+  final List<(String, String)> rows;
+
+  const _InfoCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardGrey,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      rows[i].$1,
+                      style: const TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      rows[i].$2,
+                      style: const TextStyle(color: AppColors.ink, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

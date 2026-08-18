@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../auth/domain/entities/driver.dart';
-import '../../../auth/presentation/screens/alta_payment_screen.dart';
-import '../../../auth/presentation/screens/checklist_hub_screen.dart';
-import 'driver_shell.dart';
-import 'driver_status_screen.dart';
+import '../../../../domain/entities/driver.dart';
+import '../../../enrollment/presentation/screens/alta_payment_screen.dart';
+import '../../../enrollment/presentation/screens/checklist_hub_screen.dart';
+import './driver_shell.dart';
+import './driver_status_screen.dart';
 
 /// Entry point after login/bootstrap, by status: an `applicant` still completing
 /// his solicitud lands on the checklist; an `approved` driver goes through the

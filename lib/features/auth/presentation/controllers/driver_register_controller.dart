@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/network/api_exception.dart';
-import '../../data/models/register_request.dart';
-import '../../domain/entities/driver.dart';
-import '../../domain/repositories/registration_repository.dart';
+import '../../../../data/models/register_request.dart';
+import '../../../../domain/entities/driver.dart';
+import '../../../../domain/repositories/registration_repository.dart';
 
 /// Owns the driver registration STEP 1 (solicitudes-app): personal data + privacy
 /// consent. Submitting creates an `applicant` (token persisted by the repository)

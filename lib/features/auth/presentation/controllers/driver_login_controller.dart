@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/network/api_exception.dart';
-import '../../domain/entities/driver.dart';
-import '../../domain/repositories/auth_repository.dart';
+import '../../../../domain/entities/driver.dart';
+import '../../../../domain/repositories/auth_repository.dart';
 
 /// Owns the state of the driver login form: submits credentials and exposes
 /// loading / error to the screen. Framework-agnostic ([ChangeNotifier]).

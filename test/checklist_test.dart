@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:edv_route_mobile/features/auth/domain/entities/checklist.dart';
+import 'package:edv_route_mobile/domain/entities/checklist.dart';
 
 /// Builds a document in a given review state for the assertions below.
 ChecklistDocument _doc({

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
-import 'brand_text_field.dart';
+import './brand_text_field.dart';
 
 /// Password variant of [BrandTextField] with a show/hide toggle. Stateful only
 /// to own the obscure flag; validation and submission are delegated upward.

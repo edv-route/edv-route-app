@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../theme/app_colors.dart';
-import '../../../auth/domain/entities/driver.dart';
-import 'dashboard_screen.dart';
-import 'profile_screen.dart';
+import '../../../../domain/entities/driver.dart';
+import './dashboard_screen.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
 
 /// Authenticated driver container: two tabs (Inicio / Perfil) behind a floating
 /// "island" bottom nav. Kept to two tabs for now; Historial/Agendados come later.

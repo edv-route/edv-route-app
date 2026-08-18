@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
+import './app_colors.dart';
 
 /// Builds the app's Material 3 theme from the EDV brand tokens. Every component
 /// style (buttons, inputs, typography) is centralized here so screens never

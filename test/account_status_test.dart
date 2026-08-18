@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:edv_route_mobile/features/auth/domain/entities/account_status.dart';
-import 'package:edv_route_mobile/features/auth/domain/entities/driver.dart';
+import 'package:edv_route_mobile/domain/entities/account_status.dart';
+import 'package:edv_route_mobile/domain/entities/driver.dart';
 
 void main() {
   group('AccountStatus.fromJson', () {

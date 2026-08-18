@@ -9,12 +9,12 @@ import '../../../../shared/widgets/brand_text_field.dart';
 import '../../../../shared/widgets/password_field.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../theme/app_colors.dart';
-import '../../data/models/register_request.dart';
+import '../../../../data/models/register_request.dart';
 import '../controllers/driver_register_controller.dart';
-import '../widgets/national_id_field.dart';
-import '../widgets/operator_phone_field.dart';
-import '../widgets/registration_fields.dart';
-import 'checklist_hub_screen.dart';
+import '../../../../shared/widgets/national_id_field.dart';
+import '../../../../shared/widgets/operator_phone_field.dart';
+import '../../../../shared/widgets/registration_fields.dart';
+import '../../../enrollment/presentation/screens/checklist_hub_screen.dart';
 
 /// Driver self-registration — STEP 1 (solicitudes-app): personal data + privacy
 /// consent. Submitting creates an `applicant` and continues to the checklist,

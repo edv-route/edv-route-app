@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'features/auth/presentation/screens/driver_login_screen.dart';
-import 'features/auth/presentation/screens/driver_register_screen.dart';
-import 'features/auth/presentation/screens/membership_info_screen.dart';
-import 'features/auth/presentation/screens/splash_screen.dart';
-import 'features/auth/presentation/screens/user_type_selection_screen.dart';
-import 'routing/app_routes.dart';
-import 'theme/app_theme.dart';
+import './features/auth/presentation/screens/driver_login_screen.dart';
+import './features/auth/presentation/screens/driver_register_screen.dart';
+import './features/enrollment/presentation/screens/membership_info_screen.dart';
+import './features/auth/presentation/screens/splash_screen.dart';
+import './features/auth/presentation/screens/user_type_selection_screen.dart';
+import './routing/app_routes.dart';
+import './theme/app_theme.dart';
 
 /// Root widget: wires the brand theme and the auth route graph.
 class EdvRouteApp extends StatelessWidget {

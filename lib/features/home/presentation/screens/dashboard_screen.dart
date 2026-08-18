@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/auth_header.dart';
 import '../../../../theme/app_colors.dart';
-import '../../../auth/domain/entities/driver.dart';
+import '../../../../domain/entities/driver.dart';
 import '../widgets/dashboard_tile.dart';
 
 /// Driver home tab — intentionally simple for now: a greeting, an availability

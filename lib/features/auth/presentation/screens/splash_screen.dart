@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/di.dart';
 import '../../../../routing/app_routes.dart';
 import '../../../home/presentation/screens/driver_root_screen.dart';
-import '../../domain/entities/driver.dart';
-import 'checklist_hub_screen.dart';
+import '../../../../domain/entities/driver.dart';
+import '../../../enrollment/presentation/screens/checklist_hub_screen.dart';
 
 /// App entry point: resumes a stored session on launch. Reads the token + GET /me
 /// and routes accordingly — an `applicant` to his checklist, any other driver

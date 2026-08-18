@@ -8,7 +8,7 @@ import '../../../../shared/widgets/primary_button.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../home/presentation/screens/driver_root_screen.dart';
 import '../controllers/driver_login_controller.dart';
-import '../widgets/national_id_field.dart';
+import '../../../../shared/widgets/national_id_field.dart';
 
 /// Driver login. Authenticates by national ID ("cédula") + password against the
 /// backend `driver-auth` module. On success it routes to the driver home

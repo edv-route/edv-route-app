@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
-import 'gradient_header.dart';
+import './gradient_header.dart';
 
 /// Shared header for logo-fronted screens (selection, login, register, dashboard,
 /// status). Owns the logo, title/subtitle and a FIXED height so every screen's

@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
-import 'api_exception.dart';
+import './api_exception.dart';
 
 /// A file part for a multipart upload: raw bytes plus the field name and
 /// filename. Vendor-neutral (bytes, not a path) so the client stays free of

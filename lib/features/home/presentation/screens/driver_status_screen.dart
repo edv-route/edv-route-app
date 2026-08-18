@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/auth_header.dart';
 import '../../../../theme/app_colors.dart';
-import '../../../auth/domain/entities/driver.dart';
-import '../logout_action.dart';
+import '../../../../domain/entities/driver.dart';
+import '../../../../shared/actions/logout_action.dart';
 
 /// Shown after login when the driver is NOT approved: in review, suspended or
 /// rejected. Simple full-screen message + logout.
