@@ -56,6 +56,10 @@ abstract interface class EnrollmentRepository {
     String? plate,
   });
 
+  /// Picks the vehicle he operates with. Choosing one releases the previous
+  /// automatically; the backend refuses one that is not approved yet.
+  Future<void> setPrimaryVehicle(String vehicleId);
+
   Future<void> uploadDocument(String documentId, PickedImage image);
 
   Future<void> uploadVehicleImage(String vehicleId, PickedImage image);

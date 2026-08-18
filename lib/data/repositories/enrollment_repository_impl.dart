@@ -75,6 +75,11 @@ class EnrollmentRepositoryImpl extends SessionBoundRepository implements Enrollm
   }
 
   @override
+  Future<void> setPrimaryVehicle(String vehicleId) async {
+    await _remote.setPrimaryVehicle(vehicleId, token: await requireToken());
+  }
+
+  @override
   Future<void> uploadDocument(String documentId, PickedImage image) async {
     await _remote.uploadDocumentFile(documentId, part(image), token: await requireToken());
   }

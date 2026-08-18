@@ -155,7 +155,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         icon: Icons.description_outlined,
                         title: 'Documentos',
                         subtitle: c == null ? 'Ver tus documentos' : '${c.driverDocuments.length} documentos',
-                        trailing: const Icon(Icons.chevron_right, color: AppColors.muted, size: 20),
                         onTap: _openDocuments,
                       ),
                       ChecklistTile(
@@ -164,7 +163,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         subtitle: c == null
                             ? 'Ver tus vehículos'
                             : '${c.vehicleCount} ${c.vehicleCount == 1 ? 'vehículo' : 'vehículos'}',
-                        trailing: const Icon(Icons.chevron_right, color: AppColors.muted, size: 20),
                         onTap: _openVehicles,
                       ),
                     ],

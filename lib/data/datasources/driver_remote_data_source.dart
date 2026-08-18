@@ -49,6 +49,10 @@ class DriverRemoteDataSource {
   Future<Map<String, dynamic>> updateMe(Map<String, dynamic> body, {required String token}) =>
       _client.patch('/driver-auth/me', body, token: token);
 
+  /// Authenticated: picks the vehicle the driver operates with.
+  Future<Map<String, dynamic>> setPrimaryVehicle(String vehicleId, {required String token}) =>
+      _client.patch('/driver-auth/me/vehicles/$vehicleId/primary', const {}, token: token);
+
   /// Authenticated: puts the driver on or off duty.
   Future<Map<String, dynamic>> setAvailability(bool available, {required String token}) =>
       _client.patch('/driver-auth/me/availability', {'available': available}, token: token);

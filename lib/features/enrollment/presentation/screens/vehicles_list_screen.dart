@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/di.dart';
 
 import '../../../../shared/widgets/auth_header.dart';
 import '../../../../theme/app_colors.dart';
@@ -25,8 +26,52 @@ class VehiclesListScreen extends StatefulWidget {
   State<VehiclesListScreen> createState() => _VehiclesListScreenState();
 }
 
+/// Marks the vehicle the driver is operating with.
+class _InUseBadge extends StatelessWidget {
+  const _InUseBadge();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDCFCE7),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: const Text(
+          'En uso',
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF166534),
+          ),
+        ),
+      );
+}
+
 class _VehiclesListScreenState extends State<VehiclesListScreen> {
   ChecklistController get _controller => widget.controller;
+
+  /// Ids of the vehicle he operates with (at most one). Loaded apart because the
+  /// checklist does not carry it.
+  Set<String> _primaryIds = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrimary();
+  }
+
+  Future<void> _loadPrimary() async {
+    try {
+      final list = await Dependencies.instance.enrollmentRepository.loadVehicles();
+      if (!mounted) return;
+      setState(() {
+        _primaryIds = list.where((v) => v.isPrimary).map((v) => v.id).toSet();
+      });
+    } catch (_) {
+      // A missing badge is cosmetic: the list still works.
+    }
+  }
 
   void _openDetail(ChecklistVehicle vehicle) {
     Navigator.of(context).push(
@@ -104,7 +149,9 @@ class _VehiclesListScreenState extends State<VehiclesListScreen> {
                 icon: Icons.directions_car,
                 title: v.label,
                 subtitle: _vehicleSubtitle(v),
-                trailing: VehicleBadge(status: v.approvalStatus),
+                trailing: _primaryIds.contains(v.id)
+                    ? const _InUseBadge()
+                    : VehicleBadge(status: v.approvalStatus),
                 onTap: () => _openDetail(v),
               ),
           if (widget.allowAdd) ...[

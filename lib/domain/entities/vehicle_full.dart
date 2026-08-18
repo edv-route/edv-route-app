@@ -28,6 +28,9 @@ class VehicleFull {
   final String? vehicleType;
   final String approvalStatus; // pending | approved | rejected
   final String? rejectionReason;
+
+  /// The vehicle he is operating with. Only one of his can hold it.
+  final bool isPrimary;
   final List<VehicleImage> images;
 
   const VehicleFull({
@@ -38,6 +41,7 @@ class VehicleFull {
     required this.color,
     required this.plate,
     required this.vehicleType,
+    this.isPrimary = false,
     required this.approvalStatus,
     required this.rejectionReason,
     required this.images,

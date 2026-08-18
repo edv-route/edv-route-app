@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../shared/widgets/auth_header.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../domain/entities/checklist.dart';
@@ -26,6 +27,8 @@ class VehicleDetailScreen extends StatefulWidget {
 class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
   VehicleFull? _full;
   bool _fullLoading = true;
+
+  bool _settingPrimary = false;
 
   @override
   void initState() {
@@ -97,6 +100,92 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
     );
   }
 
+  /// Which vehicle he works with. Only ONE can hold it, so choosing this one
+  /// releases the other — the driver does not have to unset anything first.
+  /// Hidden until the vehicle is approved: the backend would refuse it anyway,
+  /// and offering a button that always fails is worse than not offering it.
+  Widget _primaryAction(String status) {
+    if (status != 'approved') return const SizedBox.shrink();
+    final isPrimary = _full?.isPrimary ?? false;
+
+    if (isPrimary) {
+      return Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDCFCE7),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.check_circle, size: 18, color: Color(0xFF166534)),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Estás trabajando con este vehículo',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF166534),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _settingPrimary ? null : _makePrimary,
+          icon: _settingPrimary
+              ? const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.directions_car, size: 18),
+          label: Text(_settingPrimary ? 'Cambiando…' : 'Usar este vehículo'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary, width: 1.4),
+            minimumSize: const Size.fromHeight(46),
+            shape: const StadiumBorder(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _makePrimary() async {
+    setState(() => _settingPrimary = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await Dependencies.instance.enrollmentRepository.setPrimaryVehicle(widget.vehicleId);
+      await _loadFull();
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Ahora trabajas con este vehículo.')));
+    } on ApiException catch (e) {
+      if (mounted) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('No se pudo cambiar el vehículo.')));
+      }
+    }
+    if (mounted) setState(() => _settingPrimary = false);
+  }
+
   Widget _unavailable() => const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -128,6 +217,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           const SizedBox(height: 12),
           RejectionReasonBox(reason: reason),
         ],
+        _primaryAction(status),
         const SizedBox(height: 16),
         _dataCard(vehicle),
         const SizedBox(height: 20),

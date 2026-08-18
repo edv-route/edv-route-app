@@ -175,7 +175,9 @@ class ChecklistTile extends StatelessWidget {
   final IconData? icon;
   final String title;
   final String? subtitle;
-  final Widget trailing;
+  /// Optional status shown BEFORE the tile's own chevron (a badge, a count…).
+  /// Never pass an arrow here: the tile already draws one.
+  final Widget? trailing;
   final VoidCallback onTap;
 
   const ChecklistTile({
@@ -183,7 +185,7 @@ class ChecklistTile extends StatelessWidget {
     this.icon,
     required this.title,
     this.subtitle,
-    required this.trailing,
+    this.trailing,
     required this.onTap,
   });
 
@@ -231,8 +233,10 @@ class ChecklistTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                trailing,
+                if (trailing != null) ...[
+                  const SizedBox(width: 8),
+                  trailing!,
+                ],
                 const SizedBox(width: 6),
                 const Icon(Icons.chevron_right, color: AppColors.muted, size: 20),
               ],
