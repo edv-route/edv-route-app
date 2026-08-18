@@ -53,7 +53,7 @@ class DriverHeader extends StatelessWidget {
             _logoRow(),
             const SizedBox(height: 14),
             _identityRow(),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             _dutyStrip(),
           ],
         ),
@@ -184,57 +184,64 @@ class DriverHeader extends StatelessWidget {
     );
   }
 
-  /// The duty switch, named in words. A coloured dot alone was ambiguous: the
-  /// driver could not tell whether green meant "you are active" or "tap to
-  /// activate".
+  /// The duty switch. Deliberately SMALL: it is a state indicator he glances at,
+  /// not the point of the screen. It hugs its content instead of spanning the
+  /// header (a full-width band read as the main element), and the label keeps a
+  /// real gap from the switch so they do not look stuck together.
   Widget _dutyStrip() {
     final label = available ? 'Activo' : 'Inactivo';
     final dot = available ? const Color(0xFF22C55E) : const Color(0xFFF97316);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 6, 8, 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        children: [
-          Container(width: 9, height: 9, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 2, 6, 2),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 7),
+            Text(
               label,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ),
-          Text(
-            available ? 'Recibiendo viajes' : 'Sin recibir viajes',
-            style: const TextStyle(color: Colors.white70, fontSize: 11.5),
-          ),
-          SizedBox(
-            width: 52,
-            child: savingAvailability
-                ? const Center(
-                    child: SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    ),
-                  )
-                : Switch(
-                    value: available,
-                    onChanged: onAvailabilityChanged,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: const Color(0xFF16A34A),
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: Colors.white30,
-                  ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            SizedBox(
+              height: 28,
+              width: 38,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: savingAvailability
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Switch(
+                        value: available,
+                        onChanged: onAvailabilityChanged,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: const Color(0xFF16A34A),
+                        inactiveThumbColor: Colors.white,
+                        inactiveTrackColor: Colors.white30,
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
