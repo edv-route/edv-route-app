@@ -5,7 +5,8 @@ import '../../../../domain/entities/account_status.dart';
 import '../../../../domain/entities/alta_debt.dart';
 import '../../../../domain/entities/enrollment_cost.dart';
 import '../../../../domain/entities/picked_image.dart';
-import '../../../../domain/repositories/registration_repository.dart';
+import '../../../../domain/repositories/account_repository.dart';
+import '../../../../domain/repositories/catalogs_repository.dart';
 
 /// Loads the operating driver's account data for the profile tab: the debt
 /// breakdown (GET /me/debt), the account standing (GET /me/account) and the
@@ -13,9 +14,10 @@ import '../../../../domain/repositories/registration_repository.dart';
 /// so the screen stays free of network work.
 /// The documents/vehicles sections are driven separately by a ChecklistController.
 class ProfileController extends ChangeNotifier {
-  ProfileController(this._repository);
+  ProfileController(this._repository, this._catalogs);
 
-  final RegistrationRepository _repository;
+  final AccountRepository _repository;
+  final CatalogsRepository _catalogs;
 
   bool _loading = true;
   String? _error;
@@ -46,7 +48,7 @@ class ProfileController extends ChangeNotifier {
         _account = null;
       }
       try {
-        _membership = await _repository.loadMembership();
+        _membership = await _catalogs.loadMembership();
       } catch (_) {
         _membership = null;
       }

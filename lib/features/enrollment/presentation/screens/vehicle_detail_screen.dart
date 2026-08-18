@@ -35,7 +35,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
 
   Future<void> _loadFull() async {
     try {
-      final list = await Dependencies.instance.registrationRepository.loadVehicles();
+      final list = await Dependencies.instance.enrollmentRepository.loadVehicles();
       if (!mounted) return;
       VehicleFull? found;
       for (final v in list) {

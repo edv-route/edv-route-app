@@ -23,7 +23,7 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final _repository = Dependencies.instance.registrationRepository;
+  final _repository = Dependencies.instance.accountRepository;
   final _formKey = GlobalKey<FormState>();
 
   late String _phoneOperator;

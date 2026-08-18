@@ -31,7 +31,7 @@ class DriverRegisterScreen extends StatefulWidget {
 
 class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   late final DriverRegisterController _controller =
-      DriverRegisterController(Dependencies.instance.registrationRepository);
+      DriverRegisterController(Dependencies.instance.enrollmentRepository);
 
   final _formKey = GlobalKey<FormState>();
   final _firstName = TextEditingController();

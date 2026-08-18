@@ -36,9 +36,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late Driver _driver = widget.driver;
 
   late final ProfileController _profile =
-      ProfileController(Dependencies.instance.registrationRepository);
+      ProfileController(
+        Dependencies.instance.accountRepository,
+        Dependencies.instance.catalogsRepository,
+      );
   late final ChecklistController _checklist =
-      ChecklistController(Dependencies.instance.registrationRepository);
+      ChecklistController(
+        Dependencies.instance.enrollmentRepository,
+        Dependencies.instance.catalogsRepository,
+      );
 
   @override
   void initState() {

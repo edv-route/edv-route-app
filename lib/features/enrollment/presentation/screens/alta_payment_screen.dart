@@ -9,7 +9,7 @@ import '../../../../theme/app_colors.dart';
 import '../../../home/presentation/screens/driver_shell.dart';
 import '../../../../domain/entities/alta_debt.dart';
 import '../../../../domain/entities/driver.dart';
-import '../../../../domain/repositories/registration_repository.dart' show PaymentCapture;
+import '../../../../domain/repositories/enrollment_repository.dart' show PaymentCapture;
 import '../controllers/alta_payment_controller.dart';
 import '../widgets/payment_draft_sheet.dart';
 
@@ -29,7 +29,11 @@ class AltaPaymentScreen extends StatefulWidget {
 
 class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
   late final AltaPaymentController _controller =
-      AltaPaymentController(Dependencies.instance.registrationRepository);
+      AltaPaymentController(
+    Dependencies.instance.enrollmentRepository,
+    Dependencies.instance.accountRepository,
+    Dependencies.instance.catalogsRepository,
+  );
   bool _acceptedTerms = false;
   int _weeks = 1; // total weeks paid at the alta (1 = base only; more = advance)
 

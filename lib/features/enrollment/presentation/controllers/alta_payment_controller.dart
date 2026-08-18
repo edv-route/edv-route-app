@@ -3,15 +3,19 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../domain/entities/alta_debt.dart';
 import '../../../../domain/entities/payment_method_option.dart';
-import '../../../../domain/repositories/registration_repository.dart';
+import '../../../../domain/repositories/account_repository.dart';
+import '../../../../domain/repositories/catalogs_repository.dart';
+import '../../../../domain/repositories/enrollment_repository.dart';
 
 /// Drives the deferred alta payment screen: loads the driver's debt (and the
 /// payment methods when there is something to pay) and submits the payment
 /// (purpose=`debt`) with the terms acceptance. Left pending for admin review.
 class AltaPaymentController extends ChangeNotifier {
-  AltaPaymentController(this._repository);
+  AltaPaymentController(this._repository, this._account, this._catalogs);
 
-  final RegistrationRepository _repository;
+  final EnrollmentRepository _repository;
+  final AccountRepository _account;
+  final CatalogsRepository _catalogs;
 
   bool _loading = true;
   String? _error;
@@ -32,10 +36,10 @@ class AltaPaymentController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final debt = await _repository.loadDebt();
+      final debt = await _account.loadDebt();
       _debt = debt;
       if (debt.hasDebt && !debt.hasPendingPayment && _methods.isEmpty) {
-        _methods = await _repository.loadPaymentMethods();
+        _methods = await _catalogs.loadPaymentMethods();
       }
     } on ApiException catch (e) {
       _error = e.message;

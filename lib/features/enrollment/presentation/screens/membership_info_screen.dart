@@ -20,7 +20,7 @@ class MembershipInfoScreen extends StatefulWidget {
 
 class _MembershipInfoScreenState extends State<MembershipInfoScreen> {
   late final MembershipInfoController _controller =
-      MembershipInfoController(Dependencies.instance.registrationRepository);
+      MembershipInfoController(Dependencies.instance.catalogsRepository);
 
   @override
   void initState() {

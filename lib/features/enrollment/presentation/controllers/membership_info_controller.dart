@@ -2,14 +2,14 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../domain/entities/enrollment_cost.dart';
-import '../../../../domain/repositories/registration_repository.dart';
+import '../../../../domain/repositories/catalogs_repository.dart';
 
 /// Loads the active membership + its benefits for the informational pre-screen
 /// (the first step of the join flow). Exposes loading / error / data to the UI.
 class MembershipInfoController extends ChangeNotifier {
   MembershipInfoController(this._repository);
 
-  final RegistrationRepository _repository;
+  final CatalogsRepository _repository;
 
   bool _loading = true;
   String? _error;

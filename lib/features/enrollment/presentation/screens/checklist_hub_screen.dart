@@ -30,7 +30,10 @@ class ChecklistHubScreen extends StatefulWidget {
 
 class _ChecklistHubScreenState extends State<ChecklistHubScreen> with WidgetsBindingObserver {
   late final ChecklistController _controller =
-      ChecklistController(Dependencies.instance.registrationRepository);
+      ChecklistController(
+    Dependencies.instance.enrollmentRepository,
+    Dependencies.instance.catalogsRepository,
+  );
 
   @override
   void initState() {

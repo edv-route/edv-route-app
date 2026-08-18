@@ -5,16 +5,18 @@ import '../../../../domain/entities/checklist.dart';
 import '../../../../domain/entities/picked_image.dart';
 import '../../../../domain/entities/registration_drafts.dart';
 import '../../../../domain/entities/vehicle_type_option.dart';
-import '../../../../domain/repositories/registration_repository.dart';
+import '../../../../domain/repositories/catalogs_repository.dart';
+import '../../../../domain/repositories/enrollment_repository.dart';
 
 /// Owns the "completa tu solicitud" checklist state: loads the applicant's
 /// document/vehicle review status and drives the actions — upload a document
 /// (create the slot via /me/documents when needed, then attach the file) and add
 /// a vehicle (POST /me/vehicles + upload its photos). Requires an active session.
 class ChecklistController extends ChangeNotifier {
-  ChecklistController(this._repository);
+  ChecklistController(this._repository, this._catalogs);
 
-  final RegistrationRepository _repository;
+  final EnrollmentRepository _repository;
+  final CatalogsRepository _catalogs;
 
   bool _loading = true;
   String? _error;
@@ -47,7 +49,7 @@ class ChecklistController extends ChangeNotifier {
       // checklist (the type is optional), so it degrades to an empty selector.
       if (_vehicleTypes.isEmpty) {
         try {
-          _vehicleTypes = await _repository.loadVehicleTypes();
+          _vehicleTypes = await _catalogs.loadVehicleTypes();
         } catch (_) {
           _vehicleTypes = const [];
         }
