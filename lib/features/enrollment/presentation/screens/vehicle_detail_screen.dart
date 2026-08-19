@@ -104,9 +104,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
   /// releases the other — the driver does not have to unset anything first.
   /// Hidden until the vehicle is approved: the backend would refuse it anyway,
   /// and offering a button that always fails is worse than not offering it.
-  Widget _primaryAction(String status) {
+  Widget _primaryAction(String status, bool isPrimary) {
     if (status != 'approved') return const SizedBox.shrink();
-    final isPrimary = _full?.isPrimary ?? false;
 
     if (isPrimary) {
       return Container(
@@ -217,7 +216,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           const SizedBox(height: 12),
           RejectionReasonBox(reason: reason),
         ],
-        _primaryAction(status),
+        _primaryAction(status, vehicle?.isPrimary ?? _full?.isPrimary ?? false),
         const SizedBox(height: 16),
         _dataCard(vehicle),
         const SizedBox(height: 20),

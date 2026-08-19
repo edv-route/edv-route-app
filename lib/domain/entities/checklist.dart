@@ -90,6 +90,12 @@ class ChecklistVehicle {
   final String? rejectionReason;
   final List<ChecklistDocument> documents;
 
+  /// The vehicle he is operating with. It travels WITH the checklist on purpose:
+  /// asking a second endpoint for it meant that when that call failed the list
+  /// silently showed none in use — and offered "use this one" on the one already
+  /// in use.
+  final bool isPrimary;
+
   const ChecklistVehicle({
     required this.id,
     required this.brand,
@@ -98,6 +104,7 @@ class ChecklistVehicle {
     required this.approvalStatus,
     required this.rejectionReason,
     required this.documents,
+    this.isPrimary = false,
   });
 
   bool get isRejected => approvalStatus == 'rejected';
@@ -121,6 +128,7 @@ class ChecklistVehicle {
         plate: (json['plate'] as String?)?.trim(),
         approvalStatus: (json['approvalStatus'] as String?) ?? 'pending',
         rejectionReason: (json['rejectionReason'] as String?)?.trim(),
+        isPrimary: json['isPrimary'] as bool? ?? false,
         documents: (json['documents'] as List<dynamic>? ?? const [])
             .whereType<Map>()
             .map((e) => ChecklistDocument.fromJson(e.cast<String, dynamic>()))

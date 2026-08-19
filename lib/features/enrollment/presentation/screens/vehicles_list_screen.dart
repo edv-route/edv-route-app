@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/di.dart';
+import '../../../../core/network/api_exception.dart';
 
 import '../../../../shared/widgets/auth_header.dart';
 import '../../../../theme/app_colors.dart';
@@ -26,24 +27,66 @@ class VehiclesListScreen extends StatefulWidget {
   State<VehiclesListScreen> createState() => _VehiclesListScreenState();
 }
 
-/// Marks the vehicle the driver is operating with.
+/// Puts this vehicle in use. Only shown on an approved one that is not already
+/// the current: the backend refuses anything else, so offering it would be a
+/// button that always fails.
+class _UseButton extends StatelessWidget {
+  final bool busy;
+  final VoidCallback onTap;
+
+  const _UseButton({required this.busy, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: busy ? null : onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.primary, width: 1.2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+      ),
+      child: busy
+          ? const SizedBox(
+              height: 12,
+              width: 12,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Text('Usar'),
+    );
+  }
+}
+
+/// Marks the vehicle the driver is operating with. Filled and with a tick: a
+/// pale chip beside an "Aprobado" of the same colour was invisible, which is
+/// exactly what Luis reported.
 class _InUseBadge extends StatelessWidget {
   const _InUseBadge();
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFFDCFCE7),
+          color: const Color(0xFF16A34A),
           borderRadius: BorderRadius.circular(999),
         ),
-        child: const Text(
-          'En uso',
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF166534),
-          ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle, size: 13, color: Colors.white),
+            SizedBox(width: 4),
+            Text(
+              'En uso',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ],
         ),
       );
 }
@@ -51,27 +94,39 @@ class _InUseBadge extends StatelessWidget {
 class _VehiclesListScreenState extends State<VehiclesListScreen> {
   ChecklistController get _controller => widget.controller;
 
-  /// Ids of the vehicle he operates with (at most one). Loaded apart because the
-  /// checklist does not carry it.
-  Set<String> _primaryIds = const {};
+  /// Vehicle whose switch is in flight, to freeze just that row.
+  String? _switchingId;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadPrimary();
-  }
-
-  Future<void> _loadPrimary() async {
+  /// Makes this one the vehicle he works with. The previous is released by the
+  /// backend, so the list only has to reload which id is primary.
+  Future<void> _usePrimary(String vehicleId) async {
+    setState(() => _switchingId = vehicleId);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      final list = await Dependencies.instance.enrollmentRepository.loadVehicles();
-      if (!mounted) return;
-      setState(() {
-        _primaryIds = list.where((v) => v.isPrimary).map((v) => v.id).toSet();
-      });
+      await Dependencies.instance.enrollmentRepository.setPrimaryVehicle(vehicleId);
+      // The checklist carries which one is in use, so reloading it repaints the row.
+      await _controller.load();
+      if (mounted) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('Ahora trabajas con este vehículo.')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (_) {
-      // A missing badge is cosmetic: the list still works.
+      if (mounted) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('No se pudo cambiar el vehículo.')));
+      }
     }
+    if (mounted) setState(() => _switchingId = null);
   }
+
 
   void _openDetail(ChecklistVehicle vehicle) {
     Navigator.of(context).push(
@@ -148,10 +203,20 @@ class _VehiclesListScreenState extends State<VehiclesListScreen> {
               ChecklistTile(
                 icon: Icons.directions_car,
                 title: v.label,
-                subtitle: _vehicleSubtitle(v),
-                trailing: _primaryIds.contains(v.id)
+                subtitle: v.isPrimary
+                    ? '${_vehicleSubtitle(v)} · lo estás usando'
+                    : _vehicleSubtitle(v),
+                // The choice belongs in the LIST: it is where he sees his
+                // vehicles side by side and decides between them. Having it only
+                // inside the detail meant nobody found it.
+                trailing: v.isPrimary
                     ? const _InUseBadge()
-                    : VehicleBadge(status: v.approvalStatus),
+                    : v.approvalStatus == 'approved'
+                        ? _UseButton(
+                            busy: _switchingId == v.id,
+                            onTap: () => _usePrimary(v.id),
+                          )
+                        : VehicleBadge(status: v.approvalStatus),
                 onTap: () => _openDetail(v),
               ),
           if (widget.allowAdd) ...[

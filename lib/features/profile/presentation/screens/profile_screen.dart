@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/money.dart';
 
+import '../../../../core/config/app_build.dart';
 import '../../../../core/di.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/utils/date_format.dart';
@@ -182,6 +183,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
               const SizedBox(height: 24),
+              // Which build is installed: a bug reported without it costs a round
+              // trip figuring out whether the fix was even in the driver's hands.
+              if (AppBuild.label.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'EDV Route ${AppBuild.label}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
+                  ),
+                ),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
