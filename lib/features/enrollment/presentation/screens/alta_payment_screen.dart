@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/date_format.dart';
 import '../../../../core/utils/money.dart';
 
 import '../../../../core/di.dart';
@@ -157,6 +158,13 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Before anything else: his last payment was turned down and why. It
+          // goes ABOVE the breakdown because without it the screen looks like he
+          // never sent one, and he resends the same rejected proof.
+          if (debt.rejected != null) ...[
+            _RejectedCard(rejection: debt.rejected!),
+            const SizedBox(height: 16),
+          ],
           _DebtCard(debt: debt, weeks: _weeks, total: _totalFor(debt)),
           if (weekly != null) ...[
             const SizedBox(height: 16),
@@ -185,6 +193,62 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
               label: const Text('Cerrar sesión'),
               style: TextButton.styleFrom(foregroundColor: AppColors.primary900),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The admin turned his last payment down: how much it was, when, and the reason
+/// he typed. Shown until the driver sends a new payment (the backend clears it).
+class _RejectedCard extends StatelessWidget {
+  final AltaDebtRejection rejection;
+
+  const _RejectedCard({required this.rejection});
+
+  @override
+  Widget build(BuildContext context) {
+    final when = rejection.reviewedAt;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.error_outline, size: 20, color: AppColors.primary700),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Tu pago de ${rejection.amountLabel} fue rechazado',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (rejection.reason != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Motivo: ${rejection.reason}',
+              style: const TextStyle(fontSize: 13.5, height: 1.4, color: AppColors.primary900),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Text(
+            when != null
+                ? 'Revisado el ${formatDisplayDate(when)}. Corrige lo indicado y vuelve a enviarlo.'
+                : 'Corrige lo indicado y vuelve a enviarlo.',
+            style: const TextStyle(fontSize: 12.5, height: 1.4, color: AppColors.muted),
           ),
         ],
       ),

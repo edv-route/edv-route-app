@@ -18,16 +18,42 @@ class AltaDebtItem {
       );
 }
 
+/// His last payment was turned down. Until this existed the app said nothing:
+/// the payment screen simply came back, so the driver had no way of knowing he
+/// had been rejected — let alone why — and resent the same proof.
+class AltaDebtRejection {
+  final double amountUsd;
+  final String? reason;
+  final DateTime? reviewedAt;
+
+  const AltaDebtRejection({required this.amountUsd, this.reason, this.reviewedAt});
+
+  String get amountLabel => formatUsd(amountUsd);
+
+  factory AltaDebtRejection.fromJson(Map<String, dynamic> json) => AltaDebtRejection(
+        amountUsd: double.tryParse('${json['amountUsd']}') ?? 0,
+        reason: (json['reason'] as String?)?.trim().isEmpty ?? true
+            ? null
+            : (json['reason'] as String).trim(),
+        reviewedAt: DateTime.tryParse('${json['reviewedAt']}')?.toLocal(),
+      );
+}
+
 /// The whole debt the app needs to show and settle.
 class AltaDebt {
   final double totalUsd;
   final List<AltaDebtItem> items;
   final bool hasPendingPayment;
 
+  /// Set while his LAST submission is a rejected one; the backend clears it by
+  /// itself as soon as he sends a new payment.
+  final AltaDebtRejection? rejected;
+
   const AltaDebt({
     required this.totalUsd,
     required this.items,
     required this.hasPendingPayment,
+    this.rejected,
   });
 
   bool get hasDebt => totalUsd > 0;
@@ -51,5 +77,10 @@ class AltaDebt {
             .map((e) => AltaDebtItem.fromJson(e.cast<String, dynamic>()))
             .toList(),
         hasPendingPayment: json['hasPendingPayment'] as bool? ?? false,
+        rejected: json['rejected'] is Map
+            ? AltaDebtRejection.fromJson(
+                (json['rejected'] as Map).cast<String, dynamic>(),
+              )
+            : null,
       );
 }
