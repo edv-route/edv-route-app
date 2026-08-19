@@ -9,10 +9,12 @@ import '../../../../shared/widgets/primary_button.dart';
 import '../../../../theme/app_colors.dart';
 // home <- auth cross-reference: an already-settled driver enters the app shell.
 import '../../../home/presentation/screens/driver_shell.dart';
+import '../../../home/presentation/screens/driver_status_screen.dart';
 import '../../../../domain/entities/alta_debt.dart';
 import '../../../../domain/entities/driver.dart';
 import '../../../../domain/repositories/enrollment_repository.dart' show PaymentCapture;
 import '../controllers/alta_payment_controller.dart';
+import '../controllers/alta_screen_state.dart';
 import '../widgets/payment_draft_sheet.dart';
 
 /// Deferred alta payment (solicitudes-app): once the admin approves the solicitud,
@@ -46,12 +48,17 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
       if (!mounted) return;
       final debt = _controller.debt;
       // Settled AND the admin already set the tariff start → an operating driver:
-      // go straight to the app shell. Settled but the tariff hasn't started yet →
-      // the waiting screen (built below), never the home.
+      // go straight to the app shell. Any other case stays on this screen, which
+      // picks what to show with the SAME rule (no second, drifting copy of it).
       if (debt != null &&
-          !debt.hasDebt &&
-          !debt.hasPendingPayment &&
-          widget.driver.tariffStarted) {
+          altaScreenState(
+                hasDebt: debt.hasDebt,
+                hasPendingPayment: debt.hasPendingPayment,
+                justSubmitted: false,
+                isApproved: widget.driver.status == DriverStatus.approved,
+                tariffStarted: widget.driver.tariffStarted,
+              ) ==
+              AltaScreenState.settled) {
         _enterApp();
       }
     });
@@ -130,19 +137,27 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
                   return _ErrorState(message: _controller.error!, onRetry: _controller.load);
                 }
                 final debt = _controller.debt!;
-                if (_controller.submitted || debt.hasPendingPayment) {
-                  return _PendingState(onLogout: _logout);
-                }
-                if (!debt.hasDebt) {
-                  // Paid, but the admin hasn't set the tariff start yet: the driver
-                  // is approved and does NOT operate until then — a waiting screen,
-                  // never the app home.
-                  if (!widget.driver.tariffStarted) {
+                switch (altaScreenState(
+                  hasDebt: debt.hasDebt,
+                  hasPendingPayment: debt.hasPendingPayment,
+                  justSubmitted: _controller.submitted,
+                  isApproved: widget.driver.status == DriverStatus.approved,
+                  tariffStarted: widget.driver.tariffStarted,
+                )) {
+                  case AltaScreenState.paymentUnderReview:
+                    return _PendingState(onLogout: _logout);
+                  case AltaScreenState.pay:
+                    return _payContent(debt);
+                  // Still `pending` and owing nothing: it is the ADMIN's turn.
+                  case AltaScreenState.applicationUnderReview:
+                    return DriverStatusScreen(driver: widget.driver);
+                  // Paid, but the admin hasn't set the tariff start yet: approved
+                  // and does NOT operate until then — a waiting screen, never home.
+                  case AltaScreenState.waitingTariffStart:
                     return _WaitingStartState(onLogout: _logout);
-                  }
-                  return _SettledState(onEnter: _enterApp);
+                  case AltaScreenState.settled:
+                    return _SettledState(onEnter: _enterApp);
                 }
-                return _payContent(debt);
               },
             ),
           ),

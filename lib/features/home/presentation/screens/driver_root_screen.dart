@@ -35,7 +35,13 @@ class DriverRootScreen extends StatelessWidget {
       case DriverStatus.scheduled:
       case DriverStatus.unknown:
         return DriverShell(driver: driver);
+      // A `pending` affiliate may OWE money: a panel registration without payment
+      // leaves him owing the alta, and so does a reverted receipt. Routing him
+      // straight to "solicitud en revisión" trapped him there with no way to pay
+      // (2026-08-19). The payment screen asks for his debt and, when there is
+      // none, shows that same review notice itself.
       case DriverStatus.pending:
+        return AltaPaymentScreen(driver: driver);
       case DriverStatus.rejected:
       case DriverStatus.suspended:
         return DriverStatusScreen(driver: driver);
