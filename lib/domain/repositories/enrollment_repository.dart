@@ -58,24 +58,15 @@ abstract interface class EnrollmentRepository {
   /// data, photo and documents and puts it back under review.
   Future<String> resubmitVehicleDraft(String vehicleId, VehicleDraft draft);
 
-  /// Registers a vehicle on the driver's OWN solicitud and returns its id.
-  @Deprecated('Piece-by-piece creation; use submitVehicleDraft (2026-08-20)')
-  Future<String> addVehicle({
-    int? vehicleTypeId,
-    String? brand,
-    String? model,
-    int? year,
-    String? color,
-    String? plate,
-  });
 
   /// Picks the vehicle he operates with. Choosing one releases the previous
   /// automatically; the backend refuses one that is not approved yet.
   Future<void> setPrimaryVehicle(String vehicleId);
 
+  /// Attaches (or replaces) a document's file. Still the path for the driver's
+  /// OWN papers and for a REJECTED vehicle document; a vehicle's photo now
+  /// travels inside its submission, so there is no separate photo upload.
   Future<void> uploadDocument(String documentId, PickedImage image);
-
-  Future<void> uploadVehicleImage(String vehicleId, PickedImage image);
 
   /// A short-lived signed URL to preview one of the driver's OWN documents. It
   /// expires quickly (~60 s), so it is fetched on demand when opening the file.

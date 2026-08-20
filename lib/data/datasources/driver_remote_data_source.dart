@@ -32,11 +32,6 @@ class DriverRemoteDataSource {
   Future<Map<String, dynamic>> addDocument(Map<String, dynamic> body, {required String token}) =>
       _client.post('/driver-auth/me/documents', body, token: token);
 
-  /// Authenticated: register a vehicle on the applicant's OWN solicitud (born
-  /// pending). Photos are uploaded afterwards via /vehicles/:vehicleId/images.
-  Future<Map<String, dynamic>> addVehicle(Map<String, dynamic> body, {required String token}) =>
-      _client.post('/driver-auth/me/vehicles', body, token: token);
-
   /// Authenticated: the driver's alta/arrears debt (for the deferred payment).
   Future<Map<String, dynamic>> debt({required String token}) =>
       _client.get('/driver-auth/me/debt', token: token);
@@ -76,9 +71,6 @@ class DriverRemoteDataSource {
   /// Authenticated: the driver's vehicles with full detail + signed photo URLs.
   Future<List<dynamic>> vehicles({required String token}) =>
       _client.getList('/driver-auth/me/vehicles', token: token);
-
-  Future<void> uploadVehicleImage(String vehicleId, MultipartPart file, {required String token}) =>
-      _client.postMultipart('/driver-auth/vehicles/$vehicleId/images', files: [file], token: token);
 
   /// A whole vehicle in one multipart call: its data as fields, the picture in
   /// the "photo" field and each paper in `document_<requirementId>`. With

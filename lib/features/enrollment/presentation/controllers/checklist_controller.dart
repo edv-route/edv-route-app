@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../domain/entities/checklist.dart';
 import '../../../../domain/entities/picked_image.dart';
-import '../../../../domain/entities/registration_drafts.dart';
 import '../../../../domain/entities/vehicle_type_option.dart';
 import '../../../../domain/repositories/catalogs_repository.dart';
 import '../../../../domain/repositories/enrollment_repository.dart';
@@ -26,14 +25,12 @@ class ChecklistController extends ChangeNotifier {
   /// Which document is uploading (keyed by vehicleId-or-driver + requirement), so
   /// only that row shows a spinner. Null when idle.
   String? _uploadingKey;
-  bool _savingVehicle = false;
   String? _actionError;
 
   bool get loading => _loading;
   String? get error => _error;
   Checklist? get checklist => _checklist;
   List<VehicleTypeOption> get vehicleTypes => _vehicleTypes;
-  bool get savingVehicle => _savingVehicle;
   String? get actionError => _actionError;
 
   bool isUploading(int requirementId, {String? vehicleId}) =>
@@ -87,39 +84,6 @@ class ChecklistController extends ChangeNotifier {
     }
     _uploadingKey = null;
     notifyListeners();
-  }
-
-  /// Registers a vehicle (POST /me/vehicles) and uploads its photos, then refreshes
-  /// the checklist so its document requirements appear. Returns true on success.
-  Future<bool> addVehicle(VehicleItemDraft draft) async {
-    if (_savingVehicle) return false;
-    _savingVehicle = true;
-    _actionError = null;
-    notifyListeners();
-    try {
-      final vehicleId = await _repository.addVehicle(
-        vehicleTypeId: draft.vehicleTypeId,
-        brand: draft.brand,
-        model: draft.model,
-        year: draft.year,
-        color: draft.color,
-        plate: draft.plate,
-      );
-      for (final photo in draft.photos) {
-        await _repository.uploadVehicleImage(vehicleId, photo);
-      }
-      _checklist = await _repository.loadChecklist();
-      _savingVehicle = false;
-      notifyListeners();
-      return true;
-    } on ApiException catch (e) {
-      _actionError = e.message;
-    } catch (_) {
-      _actionError = 'No se pudo registrar el vehículo. Intenta de nuevo.';
-    }
-    _savingVehicle = false;
-    notifyListeners();
-    return false;
   }
 
   /// A short-lived signed URL to preview a document's uploaded file (fetched on

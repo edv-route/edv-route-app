@@ -100,30 +100,6 @@ class EnrollmentRepositoryImpl extends SessionBoundRepository implements Enrollm
   }
 
   @override
-  Future<String> addVehicle({
-    int? vehicleTypeId,
-    String? brand,
-    String? model,
-    int? year,
-    String? color,
-    String? plate,
-  }) async {
-    final data = await _remote.addVehicle({
-      if (vehicleTypeId != null) 'vehicleTypeId': vehicleTypeId,
-      if (brand != null && brand.isNotEmpty) 'brand': brand,
-      if (model != null && model.isNotEmpty) 'model': model,
-      if (year != null) 'year': year,
-      if (color != null && color.isNotEmpty) 'color': color,
-      if (plate != null && plate.isNotEmpty) 'plate': plate,
-    }, token: await requireToken());
-    final id = data['id'] as String?;
-    if (id == null || id.isEmpty) {
-      throw const ApiException('No se pudo registrar el vehículo.');
-    }
-    return id;
-  }
-
-  @override
   Future<void> setPrimaryVehicle(String vehicleId) async {
     await _remote.setPrimaryVehicle(vehicleId, token: await requireToken());
   }
@@ -131,11 +107,6 @@ class EnrollmentRepositoryImpl extends SessionBoundRepository implements Enrollm
   @override
   Future<void> uploadDocument(String documentId, PickedImage image) async {
     await _remote.uploadDocumentFile(documentId, part(image), token: await requireToken());
-  }
-
-  @override
-  Future<void> uploadVehicleImage(String vehicleId, PickedImage image) async {
-    await _remote.uploadVehicleImage(vehicleId, part(image), token: await requireToken());
   }
 
   @override

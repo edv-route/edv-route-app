@@ -176,13 +176,10 @@ class _VehiclesListScreenState extends State<VehiclesListScreen> {
                 if (checklist == null) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                return Stack(
-                  children: [
-                    _content(checklist),
-                    if (_controller.savingVehicle)
-                      const SavingOverlay(message: 'Registrando tu vehículo…'),
-                  ],
-                );
+                // No saving overlay any more: adding a vehicle no longer writes
+                // from this screen — it opens the draft, which owns its own
+                // progress while it sends.
+                return _content(checklist);
               },
             ),
           ),
@@ -227,7 +224,7 @@ class _VehiclesListScreenState extends State<VehiclesListScreen> {
           if (widget.allowAdd) ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: _controller.savingVehicle ? null : _addVehicle,
+              onPressed: _addVehicle,
               icon: const Icon(Icons.add, size: 18),
               label: Text(checklist.hasVehicle ? 'Agregar otro vehículo' : 'Agregar vehículo'),
               style: OutlinedButton.styleFrom(
