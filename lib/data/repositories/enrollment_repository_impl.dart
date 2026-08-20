@@ -1,7 +1,11 @@
+import 'dart:io';
+
+import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/storage/token_storage.dart';
 import '../../domain/entities/checklist.dart';
 import '../../domain/entities/picked_image.dart';
+import '../../domain/entities/vehicle_draft.dart';
 import '../../domain/entities/vehicle_full.dart';
 import '../../domain/repositories/enrollment_repository.dart';
 import '../datasources/driver_remote_data_source.dart';
@@ -46,6 +50,51 @@ class EnrollmentRepositoryImpl extends SessionBoundRepository implements Enrollm
     final id = data['id'] as String?;
     if (id == null || id.isEmpty) {
       throw const ApiException('No se pudo registrar el documento.');
+    }
+    return id;
+  }
+
+  @override
+  Future<String> submitVehicleDraft(VehicleDraft draft) => _sendDraft(draft, null);
+
+  @override
+  Future<String> resubmitVehicleDraft(String vehicleId, VehicleDraft draft) =>
+      _sendDraft(draft, vehicleId);
+
+  /// Reads the draft's files off the phone and posts the whole vehicle at once.
+  /// Both paths send exactly the same payload — the endpoint is the only thing
+  /// that changes — so a correction can never be validated differently.
+  Future<String> _sendDraft(VehicleDraft draft, String? resubmitVehicleId) async {
+    final files = <MultipartPart>[
+      MultipartPart(
+        field: 'photo',
+        bytes: await File(draft.photoPath!).readAsBytes(),
+        filename: 'foto.jpg',
+      ),
+      for (final doc in draft.documents)
+        if (doc.localPath != null)
+          MultipartPart(
+            field: 'document_${doc.requirementId}',
+            bytes: await File(doc.localPath!).readAsBytes(),
+            filename: doc.fileName ?? 'documento_${doc.requirementId}',
+          ),
+    ];
+    final data = await _remote.submitVehicle(
+      {
+        if (draft.vehicleTypeId != null) 'vehicleTypeId': '${draft.vehicleTypeId}',
+        if (_notEmpty(draft.brand)) 'brand': draft.brand!,
+        if (_notEmpty(draft.model)) 'model': draft.model!,
+        if (draft.year != null) 'year': '${draft.year}',
+        if (_notEmpty(draft.color)) 'color': draft.color!,
+        if (_notEmpty(draft.plate)) 'plate': draft.plate!,
+      },
+      files,
+      token: await requireToken(),
+      resubmitVehicleId: resubmitVehicleId,
+    );
+    final id = data['id'] as String?;
+    if (id == null || id.isEmpty) {
+      throw const ApiException('No se pudo enviar el vehículo.');
     }
     return id;
   }

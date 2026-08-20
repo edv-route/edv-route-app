@@ -1,51 +1,6 @@
 import '../../domain/entities/driver.dart';
 import './driver_dto.dart';
 
-/// Reference to a document the driver will provide (metadata only; the binary is
-/// uploaded afterwards). Maps to the backend `documents[]` entries.
-class DocumentRef {
-  final int requirementId;
-  final String? expiresAt;
-
-  const DocumentRef({required this.requirementId, this.expiresAt});
-
-  Map<String, dynamic> toJson() => {
-        'requirementId': requirementId,
-        if (expiresAt != null) 'expiresAt': expiresAt,
-      };
-}
-
-/// A vehicle draft carried in the registration payload.
-class VehicleDraft {
-  final int? vehicleTypeId;
-  final String? brand;
-  final String? model;
-  final int? year;
-  final String? color;
-  final String? plate;
-  final List<DocumentRef> documents;
-
-  const VehicleDraft({
-    this.vehicleTypeId,
-    this.brand,
-    this.model,
-    this.year,
-    this.color,
-    this.plate,
-    this.documents = const [],
-  });
-
-  Map<String, dynamic> toJson() => {
-        if (vehicleTypeId != null) 'vehicleTypeId': vehicleTypeId,
-        if (brand != null && brand!.isNotEmpty) 'brand': brand,
-        if (model != null && model!.isNotEmpty) 'model': model,
-        if (year != null) 'year': year,
-        if (color != null && color!.isNotEmpty) 'color': color,
-        if (plate != null && plate!.isNotEmpty) 'plate': plate,
-        'documents': documents.map((d) => d.toJson()).toList(),
-      };
-}
-
 /// Step-1 registration payload for `POST /driver-auth/register` (solicitudes-app):
 /// personal data + privacy consent ONLY. Documents, vehicles and payment are added
 /// afterwards from the checklist (/me/* endpoints), never here — the backend

@@ -76,6 +76,24 @@ class DriverRemoteDataSource {
   Future<void> uploadVehicleImage(String vehicleId, MultipartPart file, {required String token}) =>
       _client.postMultipart('/driver-auth/vehicles/$vehicleId/images', files: [file], token: token);
 
+  /// A whole vehicle in one multipart call: its data as fields, the picture in
+  /// the "photo" field and each paper in `document_<requirementId>`. With
+  /// [resubmitVehicleId] it goes to the rejected vehicle instead of creating one.
+  Future<Map<String, dynamic>> submitVehicle(
+    Map<String, String> fields,
+    List<MultipartPart> files, {
+    required String token,
+    String? resubmitVehicleId,
+  }) =>
+      _client.postMultipart(
+        resubmitVehicleId == null
+            ? '/driver-auth/me/vehicles/submit'
+            : '/driver-auth/me/vehicles/$resubmitVehicleId/resubmit',
+        fields: fields,
+        files: files,
+        token: token,
+      );
+
   Future<void> submitPayment(Map<String, String> fields, MultipartPart receipt, {required String token}) =>
       _client.postMultipart('/driver-auth/payment-submissions', fields: fields, files: [receipt], token: token);
 }

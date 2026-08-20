@@ -1,6 +1,7 @@
 import '../../data/models/register_request.dart';
 import '../entities/checklist.dart';
 import '../entities/picked_image.dart';
+import '../entities/vehicle_draft.dart';
 import '../entities/vehicle_full.dart';
 
 /// Payment captured for the alta: the method, the payer's details and one
@@ -46,7 +47,19 @@ abstract interface class EnrollmentRepository {
   /// for vehicle requirements, null for the driver's own.
   Future<String> addDocument({required int requirementId, String? vehicleId});
 
+  /// Sends a COMPLETE vehicle for review: data, photo and every document, in one
+  /// call the backend writes in a single transaction (2026-08-20). Returns the
+  /// new vehicle's id. Until this exists the app built the vehicle on the server
+  /// in pieces, so a failed call left half a vehicle there; now the draft lives
+  /// on the phone and only travels once.
+  Future<String> submitVehicleDraft(VehicleDraft draft);
+
+  /// The same payload for a REJECTED vehicle the driver corrected: replaces its
+  /// data, photo and documents and puts it back under review.
+  Future<String> resubmitVehicleDraft(String vehicleId, VehicleDraft draft);
+
   /// Registers a vehicle on the driver's OWN solicitud and returns its id.
+  @Deprecated('Piece-by-piece creation; use submitVehicleDraft (2026-08-20)')
   Future<String> addVehicle({
     int? vehicleTypeId,
     String? brand,
