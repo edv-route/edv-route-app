@@ -70,50 +70,26 @@ class _VehicleDraftScreenState extends State<VehicleDraftScreen> {
     await _controller!.setDocument(doc.requirementId, file);
   }
 
-  /// The point of no return, said plainly BEFORE it happens: once it is sent he
-  /// cannot touch it again unless the admin rejects something.
+  /// The point of no return, said plainly BEFORE it happens — and the send
+  /// happens INSIDE the dialog.
+  ///
+  /// Closing it first and uploading afterwards left him staring at the form with
+  /// no sign that anything was happening, while several megabytes of photos
+  /// travelled. Now the dialog holds until the upload finishes: if it works it
+  /// closes and the screen goes with it; if it fails, the reason appears right
+  /// there and the button turns back into "Reintentar" — with the vehicle intact.
   Future<void> _confirmAndSend() async {
     final controller = _controller!;
-    final confirmed = await showDialog<bool>(
+    final sent = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('¿Enviar a revisión?'),
-        content: const Text(
-          'Un administrador revisará tu vehículo y sus documentos.\n\n'
-          'Una vez enviado NO podrás editar los datos ni cambiar los documentos, '
-          'salvo que te rechacen alguno.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Revisar de nuevo'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sí, enviar'),
-          ),
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (_) => _ConfirmSendDialog(controller: controller),
     );
-    if (confirmed != true || !mounted) return;
-
-    final sent = await controller.send();
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    if (sent) {
-      Navigator.of(context).pop(true);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('Tu vehículo fue enviado a revisión.')),
-        );
-    } else if (controller.error != null) {
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(controller.error!)));
-      controller.clearError();
-    }
+    if (sent != true || !mounted) return;
+    Navigator.of(context).pop(true);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Tu vehículo fue enviado a revisión.')));
   }
 
   Future<void> _confirmDiscard() async {
@@ -442,4 +418,159 @@ class _PendingList extends StatelessWidget {
           ],
         ),
       );
+}
+
+/// Confirmation for the point of no return, which also OWNS the upload.
+///
+/// It cannot be dismissed while sending — not by the back button either: photos
+/// and papers are travelling, and walking away mid-upload would leave him
+/// wondering whether the vehicle went out or not. A failure is shown inside,
+/// not on a snackbar behind a dialog that already closed.
+class _ConfirmSendDialog extends StatefulWidget {
+  final VehicleDraftController controller;
+
+  const _ConfirmSendDialog({required this.controller});
+
+  @override
+  State<_ConfirmSendDialog> createState() => _ConfirmSendDialogState();
+}
+
+class _ConfirmSendDialogState extends State<_ConfirmSendDialog> {
+  bool _sending = false;
+  String? _error;
+
+  Future<void> _send() async {
+    if (_sending) return;
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    final ok = await widget.controller.send();
+    if (!mounted) return;
+    if (ok) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+    setState(() {
+      _sending = false;
+      _error = widget.controller.error ?? 'No se pudo enviar. Intenta de nuevo.';
+    });
+    widget.controller.clearError();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_sending,
+      child: Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  height: 52,
+                  width: 52,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.send_outlined,
+                    color: AppColors.primary700,
+                    size: 26,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                '¿Enviar a revisión?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Un administrador revisará tu vehículo y sus documentos.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, height: 1.45, color: AppColors.muted),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.gold50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.gold200),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.lock_outline, size: 17, color: AppColors.gold900),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Una vez enviado no podrás editar los datos ni cambiar los '
+                        'documentos, salvo que te rechacen alguno.',
+                        style: TextStyle(fontSize: 12.5, height: 1.4, color: AppColors.gold900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary200),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.error_outline, size: 17, color: AppColors.primary700),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            height: 1.4,
+                            color: AppColors.primary900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              PrimaryButton(
+                label: _error == null ? 'Sí, enviar' : 'Reintentar',
+                loading: _sending,
+                onPressed: _sending ? null : _send,
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                // Never while sending: the upload cannot be taken back halfway.
+                onPressed: _sending ? null : () => Navigator.of(context).pop(false),
+                style: TextButton.styleFrom(foregroundColor: AppColors.muted),
+                child: const Text('Revisar de nuevo'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

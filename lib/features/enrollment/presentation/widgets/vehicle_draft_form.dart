@@ -5,6 +5,7 @@ import '../../../../domain/entities/vehicle_draft.dart';
 import '../../../../domain/entities/vehicle_type_option.dart';
 import '../../../../shared/widgets/brand_text_field.dart';
 import '../../../../shared/widgets/registration_fields.dart';
+import '../../../../theme/app_colors.dart';
 
 /// The vehicle's data inside the draft screen.
 ///
@@ -93,23 +94,24 @@ class _VehicleDraftFormState extends State<VehicleDraftForm> {
     if (selected != null) widget.onChanged(vehicleTypeId: selected);
   }
 
+  /// Year picker as a WHEEL, from the current year back to 1900.
+  ///
+  /// A plain list was unusable: it opened on a wall of identical rows with no
+  /// title, and a Venezuelan fleet has plenty of 80s and 90s vehicles — reaching
+  /// 1987 meant scrolling forever. The wheel opens ON the year already chosen
+  /// (or the current one) and moves decades in one flick.
   Future<void> _pickYear() async {
-    final now = DateTime.now().year;
-    final years = [for (var y = now + 1; y >= now - 40; y--) y];
+    final currentYear = DateTime.now().year;
+    const firstYear = 1900;
+    final years = [for (var y = currentYear; y >= firstYear; y--) y];
+    final initial = years.indexOf(widget.draft.year ?? currentYear);
+
     final selected = await showModalBottomSheet<int>(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final y in years)
-              ListTile(
-                title: Text('$y'),
-                trailing: y == widget.draft.year ? const Icon(Icons.check, size: 18) : null,
-                onTap: () => Navigator.pop(ctx, y),
-              ),
-          ],
-        ),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _YearWheel(
+        years: years,
+        initialIndex: initial < 0 ? 0 : initial,
       ),
     );
     if (selected != null) widget.onChanged(year: selected);
@@ -202,6 +204,152 @@ class _VehicleDraftFormState extends State<VehicleDraftForm> {
           onChanged: (v) => widget.onChanged(color: v.trim()),
         ),
       ],
+    );
+  }
+}
+
+/// The year wheel itself: a titled sheet with the selection framed in the
+/// middle, so what is being chosen is obvious without hunting for a check mark
+/// on the right edge.
+class _YearWheel extends StatefulWidget {
+  final List<int> years;
+  final int initialIndex;
+
+  const _YearWheel({required this.years, required this.initialIndex});
+
+  @override
+  State<_YearWheel> createState() => _YearWheelState();
+}
+
+class _YearWheelState extends State<_YearWheel> {
+  late final FixedExtentScrollController _wheel =
+      FixedExtentScrollController(initialItem: widget.initialIndex);
+  late int _index = widget.initialIndex;
+
+  @override
+  void dispose() {
+    _wheel.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.cardGrey,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: Row(
+                children: [
+                  Icon(Icons.event_outlined, size: 20, color: AppColors.primary700),
+                  SizedBox(width: 8),
+                  Text(
+                    'Año del vehículo',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 190,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // The frame marks the selected row; the wheel scrolls behind it.
+                  Container(
+                    height: 42,
+                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary200),
+                    ),
+                  ),
+                  ListWheelScrollView.useDelegate(
+                    controller: _wheel,
+                    itemExtent: 42,
+                    perspective: 0.002,
+                    diameterRatio: 1.6,
+                    physics: const FixedExtentScrollPhysics(),
+                    onSelectedItemChanged: (i) => setState(() => _index = i),
+                    childDelegate: ListWheelChildBuilderDelegate(
+                      childCount: widget.years.length,
+                      builder: (context, i) {
+                        final selected = i == _index;
+                        return Center(
+                          child: Text(
+                            '${widget.years[i]}',
+                            style: TextStyle(
+                              fontSize: selected ? 21 : 18,
+                              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                              color: selected ? AppColors.primary900 : AppColors.muted,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.muted,
+                        minimumSize: const Size(0, 48),
+                      ),
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context, widget.years[_index]),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        minimumSize: const Size(0, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Listo',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
