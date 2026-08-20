@@ -13,6 +13,11 @@ class AccountStatus {
   /// Penalized but already settled: when the office lets him operate again.
   final DateTime? reactivatesAt;
 
+  /// His start is PROGRAMMED for this date and hasn't arrived (2026-08-20).
+  /// Null once the tariff is running. Until this existed the app could only say
+  /// he was not enabled to work, never that he already had a date.
+  final DateTime? tariffStartsAt;
+
   /// End of the last prepaid week. Null when he has never paid a week.
   final DateTime? paidUntil;
 
@@ -34,6 +39,7 @@ class AccountStatus {
   const AccountStatus({
     required this.driverStatus,
     this.reactivatesAt,
+    this.tariffStartsAt,
     this.paidUntil,
     this.upcoming,
     this.nextChargeAt,
@@ -44,6 +50,11 @@ class AccountStatus {
   });
 
   bool get isPenalized => driverStatus == 'penalized';
+
+  /// Approved with a start date that has not arrived: he is not blocked, he is
+  /// early — and there is a day to tell him.
+  bool get startsLater => tariffStartsAt != null;
+
   bool get isOverdue => driverStatus == 'overdue';
   bool get isPaused => driverStatus == 'paused';
 
@@ -62,6 +73,7 @@ class AccountStatus {
   static AccountStatus fromJson(Map<String, dynamic> json) => AccountStatus(
         driverStatus: json['driverStatus'] as String? ?? 'unknown',
         reactivatesAt: _date(json['reactivatesAt']),
+        tariffStartsAt: _date(json['tariffStartsAt']),
         paidUntil: _date(json['paidUntil']),
         upcoming: json['upcoming'] is Map
             ? UpcomingCharge.fromJson((json['upcoming'] as Map).cast<String, dynamic>())

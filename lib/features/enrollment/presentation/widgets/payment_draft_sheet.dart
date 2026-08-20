@@ -50,7 +50,7 @@ class _PaymentDraftSheetState extends State<_PaymentDraftSheet> {
     return DraftSheetScaffold(
       title: 'Datos del pago',
       subtitle: 'Registra cómo pagaste el alta. Un administrador lo revisará.',
-      confirmLabel: 'Agregar pago',
+      confirmLabel: 'Reportar pago',
       canConfirm: true,
       errorText: _error,
       onConfirm: _confirm,

@@ -442,6 +442,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ));
     } else if (account.isPaused) {
       rows.add((Icons.pause_circle_outline, 'Tu cuenta está en pausa. Contacta a la oficina.'));
+    } else if (account.startsLater) {
+      // Approved with a programmed start: he is early, not blocked. The home
+      // carries the full notice; here it stands with the rest of his standing.
+      rows.add((
+        Icons.event_available_outlined,
+        'Empiezas a trabajar el ${formatDisplayDate(account.tariffStartsAt!)}',
+      ));
     }
 
     if (rows.isEmpty) return const SizedBox.shrink();
