@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/di.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../../domain/entities/account_status.dart';
 import '../../../../shared/widgets/driver_header.dart';
@@ -17,7 +16,21 @@ class DashboardScreen extends StatefulWidget {
   /// The shell owns the driver; this reports a change back to it.
   final ValueChanged<Driver> onDriverChanged;
 
-  const DashboardScreen({super.key, required this.driver, required this.onDriverChanged});
+  /// Account standing, loaded by the shell. Null while it is still travelling
+  /// (or when it failed): the start notice simply does not render.
+  final AccountStatus? account;
+
+  final int unreadNotifications;
+  final VoidCallback onNotificationsTap;
+
+  const DashboardScreen({
+    super.key,
+    required this.driver,
+    required this.onDriverChanged,
+    required this.onNotificationsTap,
+    this.account,
+    this.unreadNotifications = 0,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -26,25 +39,10 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _savingAvailability = false;
 
-  /// Only used for the "your start is programmed" notice. Loaded quietly: if it
-  /// fails, the home simply shows no notice instead of an error the driver can
-  /// do nothing about.
-  AccountStatus? _account;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAccount();
-  }
-
-  Future<void> _loadAccount() async {
-    try {
-      final account = await Dependencies.instance.accountRepository.loadAccount();
-      if (mounted) setState(() => _account = account);
-    } catch (_) {
-      // Silent on purpose: this only feeds an informative banner.
-    }
-  }
+  /// Only used for the "your start is programmed" notice. It comes from the
+  /// shell now: loading it here as well meant two GET /me/account on startup,
+  /// and the bell reading a different copy than this banner.
+  AccountStatus? get _account => widget.account;
 
   void _soon(String message) {
     ScaffoldMessenger.of(context)
@@ -74,6 +72,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           available: widget.driver.isAvailable,
           savingAvailability: _savingAvailability,
           onAvailabilityChanged: _savingAvailability ? null : _setAvailability,
+          unreadNotifications: widget.unreadNotifications,
+          onNotificationsTap: widget.onNotificationsTap,
         ),
         Expanded(
           child: ListView(
@@ -92,13 +92,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 subtitle: 'Viajes y solicitudes entrantes',
                 onTap: () => _soon('Solicitudes: próximamente.'),
               ),
-              const SizedBox(height: 12),
-              DashboardTile(
-                icon: Icons.notifications_none,
-                title: 'Notificaciones',
-                subtitle: 'Novedades de tu cuenta',
-                onTap: () => _soon('Notificaciones: próximamente.'),
-              ),
+              // The "Notificaciones — próximamente" tile lived here. It is gone:
+              // the bell in the header opens the real inbox now, and a tile that
+              // announces as future something the driver can already see two
+              // centimetres above it is worse than no tile at all.
               const SizedBox(height: 12),
               DashboardTile(
                 icon: Icons.card_giftcard_outlined,

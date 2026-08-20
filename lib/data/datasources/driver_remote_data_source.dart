@@ -40,6 +40,26 @@ class DriverRemoteDataSource {
   Future<Map<String, dynamic>> account({required String token}) =>
       _client.get('/driver-auth/me/account', token: token);
 
+  /// Authenticated: one page of his inbox, newest first. Only notices that have
+  /// already happened — a reminder scheduled for Sunday is not in there yet.
+  Future<Map<String, dynamic>> notifications({
+    required String token,
+    int limit = 20,
+    String? before,
+  }) =>
+      _client.get(
+        '/driver-auth/me/notifications?limit=$limit${before == null ? '' : '&before=$before'}',
+        token: token,
+      );
+
+  /// Authenticated: marks one notice as read. The backend always answers 204,
+  /// even for an id that is not his — it must not reveal whether it exists.
+  Future<void> markNotificationRead(String id, {required String token}) =>
+      _client.post('/driver-auth/me/notifications/$id/read', const {}, token: token);
+
+  Future<Map<String, dynamic>> markAllNotificationsRead({required String token}) =>
+      _client.post('/driver-auth/me/notifications/read-all', const {}, token: token);
+
   /// Authenticated: the edit form's fields that do not travel in /me (address).
   Future<Map<String, dynamic>> editableData({required String token}) =>
       _client.get('/driver-auth/me/editable', token: token);

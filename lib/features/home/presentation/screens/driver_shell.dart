@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/di.dart';
 import '../../../../theme/app_colors.dart';
+import '../../../../domain/entities/account_status.dart';
 import '../../../../domain/entities/driver.dart';
+import '../../../notifications/presentation/screens/notifications_screen.dart';
 import './dashboard_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 
@@ -24,16 +27,61 @@ class _DriverShellState extends State<DriverShell> {
   /// duty switch existed twice with two separate states.
   late Driver _driver = widget.driver;
 
+  /// The shell owns the account standing for the same reason it owns the driver:
+  /// both tabs render a header from it, and two independent loads would show two
+  /// different bells. It also spares the home its own call for the start notice.
+  AccountStatus? _account;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccount();
+  }
+
+  /// Quiet on purpose: this feeds a badge and an informative banner. Failing
+  /// loudly over something the driver cannot act on would be noise.
+  Future<void> _loadAccount() async {
+    try {
+      final account = await Dependencies.instance.accountRepository.loadAccount();
+      if (mounted) setState(() => _account = account);
+    } catch (_) {
+      // Leaves the bell at zero and the banner hidden.
+    }
+  }
+
   void _onDriverChanged(Driver updated) => setState(() => _driver = updated);
+
+  /// Opens the inbox and takes the resulting count back from the pop. Refreshing
+  /// the whole account here would be a second round trip for a number the screen
+  /// he just closed already knows.
+  Future<void> _openNotifications() async {
+    final unread = await Navigator.of(context).push<int>(
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    );
+    if (unread == null || !mounted) return;
+    setState(() => _account = _account?.withUnread(unread));
+  }
 
   @override
   Widget build(BuildContext context) {
+    final unread = _account?.unreadNotifications ?? 0;
     return Scaffold(
       body: IndexedStack(
         index: _index,
         children: [
-          DashboardScreen(driver: _driver, onDriverChanged: _onDriverChanged),
-          ProfileScreen(driver: _driver, onDriverChanged: _onDriverChanged),
+          DashboardScreen(
+            driver: _driver,
+            onDriverChanged: _onDriverChanged,
+            account: _account,
+            unreadNotifications: unread,
+            onNotificationsTap: _openNotifications,
+          ),
+          ProfileScreen(
+            driver: _driver,
+            onDriverChanged: _onDriverChanged,
+            unreadNotifications: unread,
+            onNotificationsTap: _openNotifications,
+          ),
         ],
       ),
       bottomNavigationBar: _FloatingNav(

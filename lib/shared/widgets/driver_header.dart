@@ -30,6 +30,14 @@ class DriverHeader extends StatelessWidget {
   final VoidCallback? onPhotoTap;
   final bool photoBusy;
 
+  /// Unread notices for the bell. Owned by the shell, like the driver himself
+  /// and the duty switch: both tabs must show the SAME number, and a header
+  /// that fetched it on its own would show two different bells.
+  final int unreadNotifications;
+
+  /// Opens the inbox. Null hides the bell entirely (screens outside the shell).
+  final VoidCallback? onNotificationsTap;
+
   const DriverHeader({
     super.key,
     required this.driver,
@@ -39,6 +47,8 @@ class DriverHeader extends StatelessWidget {
     this.onEdit,
     this.onPhotoTap,
     this.photoBusy = false,
+    this.unreadNotifications = 0,
+    this.onNotificationsTap,
   });
 
   @override
@@ -68,6 +78,10 @@ class DriverHeader extends StatelessWidget {
       children: [
         const Image(image: AssetImage('assets/images/edv_logo_gold.png'), height: 28),
         const Spacer(),
+        if (onNotificationsTap != null) ...[
+          _NotificationsBell(unread: unreadNotifications, onTap: onNotificationsTap!),
+          if (onEdit != null) const SizedBox(width: 4),
+        ],
         if (onEdit != null)
           TextButton.icon(
             onPressed: onEdit,
@@ -250,5 +264,68 @@ class DriverHeader extends StatelessWidget {
     final parts = driver.fullName.trim().split(RegExp(r'\s+'));
     final letters = parts.take(2).map((p) => p.isEmpty ? '' : p[0]).join();
     return letters.isEmpty ? '?' : letters.toUpperCase();
+  }
+}
+
+/// The bell, with its unread badge.
+///
+/// It lives in the HEADER and not in the floating island (decisión de Luis): the
+/// island navigates between places one *is*, while notices are consulted and
+/// closed — and the island's ~3 comfortable slots are needed for Viajes. The
+/// header also has one concrete advantage: GOLD is free here. In the island gold
+/// already means "active tab", so a gold badge there would say two things at once.
+class _NotificationsBell extends StatelessWidget {
+  final int unread;
+  final VoidCallback onTap;
+
+  const _NotificationsBell({required this.unread, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: unread == 0 ? 'Avisos' : 'Avisos, $unread sin leer',
+      child: InkResponse(
+        onTap: onTap,
+        radius: 24,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
+              if (unread > 0)
+                Positioned(
+                  right: -5,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    constraints: const BoxConstraints(minWidth: 17),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold,
+                      borderRadius: BorderRadius.circular(9),
+                      // The badge sits on a red gradient; without this ring it
+                      // reads as a smudge on the bell instead of a count.
+                      border: Border.all(color: AppColors.primary900, width: 1.5),
+                    ),
+                    child: Text(
+                      // Past 9 the exact number stops mattering and starts
+                      // widening the badge over the logo.
+                      unread > 9 ? '9+' : '$unread',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.primary900,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

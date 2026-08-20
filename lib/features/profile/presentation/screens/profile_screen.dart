@@ -31,7 +31,17 @@ class ProfileScreen extends StatefulWidget {
   /// The shell owns the driver; this reports edits (data, photo, duty) back.
   final ValueChanged<Driver> onDriverChanged;
 
-  const ProfileScreen({super.key, required this.driver, required this.onDriverChanged});
+  /// Bell state, owned by the shell so both tabs show the same number.
+  final int unreadNotifications;
+  final VoidCallback onNotificationsTap;
+
+  const ProfileScreen({
+    super.key,
+    required this.driver,
+    required this.onDriverChanged,
+    required this.onNotificationsTap,
+    this.unreadNotifications = 0,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -137,6 +147,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onEdit: _openEdit,
           onPhotoTap: _changePhoto,
           photoBusy: _profile.uploadingPhoto,
+          unreadNotifications: widget.unreadNotifications,
+          onNotificationsTap: widget.onNotificationsTap,
         ),
         Expanded(
           child: ListView(

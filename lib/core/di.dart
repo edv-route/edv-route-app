@@ -7,7 +7,9 @@ import '../data/repositories/enrollment_repository_impl.dart';
 import '../domain/repositories/account_repository.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/catalogs_repository.dart';
+import '../data/repositories/notifications_repository_impl.dart';
 import '../domain/repositories/enrollment_repository.dart';
+import '../domain/repositories/notifications_repository.dart';
 import './network/api_client.dart';
 import './storage/token_storage.dart';
 
@@ -41,4 +43,8 @@ class Dependencies {
   /// The driver's own account: debt, standing, personal data and photo.
   late final AccountRepository accountRepository =
       AccountRepositoryImpl(_driverApi, tokenStorage);
+
+  /// His inbox: the notices the office and the debt engine send him.
+  late final NotificationsRepository notificationsRepository =
+      NotificationsRepositoryImpl(_driverApi, tokenStorage);
 }

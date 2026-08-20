@@ -36,6 +36,12 @@ class AccountStatus {
   /// Price of the tariff, to announce the amount of a charge not yet issued.
   final double? planPriceUsd;
 
+  /// Unread notices, for the bell in the header. It travels INSIDE this call,
+  /// which every screen already makes, and never in a request of its own: a
+  /// second call that fails without a signal would leave the bell showing a
+  /// stale number while the rest of the screen is fresh.
+  final int unreadNotifications;
+
   const AccountStatus({
     required this.driverStatus,
     this.reactivatesAt,
@@ -47,6 +53,7 @@ class AccountStatus {
     this.penaltyCount = 0,
     this.capWeeks = 2,
     this.planPriceUsd,
+    this.unreadNotifications = 0,
   });
 
   bool get isPenalized => driverStatus == 'penalized';
@@ -83,6 +90,23 @@ class AccountStatus {
         penaltyCount: (json['penaltyCount'] as num?)?.toInt() ?? 0,
         capWeeks: (json['capWeeks'] as num?)?.toInt() ?? 2,
         planPriceUsd: double.tryParse(json['planPriceUsd'] as String? ?? ''),
+        unreadNotifications: (json['unreadNotifications'] as num?)?.toInt() ?? 0,
+      );
+
+  /// Same standing with a fresh unread count, for when the inbox reports back
+  /// what it left behind. Rebuilding the bell must not cost another round trip.
+  AccountStatus withUnread(int unread) => AccountStatus(
+        driverStatus: driverStatus,
+        reactivatesAt: reactivatesAt,
+        tariffStartsAt: tariffStartsAt,
+        paidUntil: paidUntil,
+        upcoming: upcoming,
+        nextChargeAt: nextChargeAt,
+        weeksOwed: weeksOwed,
+        penaltyCount: penaltyCount,
+        capWeeks: capWeeks,
+        planPriceUsd: planPriceUsd,
+        unreadNotifications: unread,
       );
 
   static DateTime? _date(Object? value) =>
