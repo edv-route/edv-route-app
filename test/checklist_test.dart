@@ -10,6 +10,7 @@ ChecklistDocument _doc({
   bool hasFile = false,
   String? approvalStatus,
   String? rejectionReason,
+  bool belongsToVehicle = false,
 }) =>
     ChecklistDocument(
       requirementId: requirementId,
@@ -19,6 +20,7 @@ ChecklistDocument _doc({
       hasFile: hasFile,
       approvalStatus: approvalStatus,
       rejectionReason: rejectionReason,
+      belongsToVehicle: belongsToVehicle,
     );
 
 void main() {
@@ -59,6 +61,45 @@ void main() {
     test('blocked once approved', () {
       expect(_doc(documentId: 'x', hasFile: true, approvalStatus: 'approved').canUpload,
           isFalse);
+    });
+
+    // A VEHICLE's papers follow the opposite rule since 2026-08-20: the vehicle
+    // travels complete and closes behind him, so swapping one mid-review would
+    // undo the point of sending it whole. Only a rejection reopens it.
+    test('a vehicle document under review is blocked, unlike a personal one', () {
+      final vehicleDoc = _doc(
+        documentId: 'x',
+        hasFile: true,
+        approvalStatus: 'pending',
+        belongsToVehicle: true,
+      );
+      final personalDoc = _doc(documentId: 'x', hasFile: true, approvalStatus: 'pending');
+      expect(vehicleDoc.canUpload, isFalse);
+      expect(personalDoc.canUpload, isTrue);
+    });
+
+    test('a REJECTED vehicle document can be replaced: that is the way back in', () {
+      expect(
+        _doc(
+          documentId: 'x',
+          hasFile: true,
+          approvalStatus: 'rejected',
+          belongsToVehicle: true,
+        ).canUpload,
+        isTrue,
+      );
+    });
+
+    test('an approved vehicle document stays blocked', () {
+      expect(
+        _doc(
+          documentId: 'x',
+          hasFile: true,
+          approvalStatus: 'approved',
+          belongsToVehicle: true,
+        ).canUpload,
+        isFalse,
+      );
     });
   });
 

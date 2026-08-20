@@ -18,6 +18,10 @@ class BrandTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final TextInputAction textInputAction;
   final ValueChanged<String>? onFieldSubmitted;
+
+  /// Fires on every keystroke. The vehicle draft needs it: what is typed goes
+  /// straight into the draft saved on the phone, with no Save button in between.
+  final ValueChanged<String>? onChanged;
   final TextCapitalization textCapitalization;
 
   const BrandTextField({
@@ -33,6 +37,7 @@ class BrandTextField extends StatelessWidget {
     this.suffixIcon,
     this.textInputAction = TextInputAction.next,
     this.onFieldSubmitted,
+    this.onChanged,
     this.textCapitalization = TextCapitalization.none,
   });
 
@@ -58,6 +63,7 @@ class BrandTextField extends StatelessWidget {
           validator: validator,
           textInputAction: textInputAction,
           onFieldSubmitted: onFieldSubmitted,
+          onChanged: onChanged,
           textCapitalization: textCapitalization,
           autovalidateMode: AutovalidateMode.onUserInteraction,
           decoration: InputDecoration(

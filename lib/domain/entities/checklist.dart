@@ -37,6 +37,7 @@ class ChecklistDocument {
     required this.hasFile,
     required this.approvalStatus,
     required this.rejectionReason,
+    this.belongsToVehicle = false,
   });
 
   DocReview get review {
@@ -59,17 +60,30 @@ class ChecklistDocument {
   /// without attaching the file). Still needs the applicant to upload it.
   bool get needsFile => documentId != null && !hasFile;
 
-  /// The applicant can upload/replace the file at any time UNTIL it is approved:
-  /// missing, without a file, under review (pending) or rejected. Once approved it
-  /// is locked in the app — replacing it would invalidate the verdict, so that's
-  /// the office's job (the backend still guards this server-side).
-  bool get canUpload => !isApproved;
+  /// Whether this slot belongs to a VEHICLE (as opposed to the driver's own
+  /// papers). The two follow different rules since 2026-08-20.
+  final bool belongsToVehicle;
+
+  /// When the driver may attach or replace the file.
+  ///
+  /// His OWN documents: any time until they are approved — they are uploaded one
+  /// by one and he can correct a blurry photo while it waits.
+  ///
+  /// A VEHICLE's documents: only when REJECTED. The vehicle travels complete and
+  /// closes behind him; letting him swap a paper mid-review would undo the point
+  /// of sending it whole. The backend refuses it too — this only keeps the app
+  /// from offering a button that always fails.
+  bool get canUpload => belongsToVehicle ? isRejected : !isApproved;
 
   /// The applicant still has to act on this item: a required document missing or
   /// without its file, or any document that was rejected.
   bool get needsAction => (isRequired && (isMissing || needsFile)) || isRejected;
 
-  factory ChecklistDocument.fromJson(Map<String, dynamic> json) => ChecklistDocument(
+  factory ChecklistDocument.fromJson(
+    Map<String, dynamic> json, {
+    bool belongsToVehicle = false,
+  }) =>
+      ChecklistDocument(
         requirementId: json['requirementId'] as int,
         requirementName: (json['requirementName'] as String?) ?? 'Documento',
         isRequired: json['isRequired'] as bool? ?? false,
@@ -77,6 +91,7 @@ class ChecklistDocument {
         hasFile: json['hasFile'] as bool? ?? false,
         approvalStatus: json['approvalStatus'] as String?,
         rejectionReason: (json['rejectionReason'] as String?)?.trim(),
+        belongsToVehicle: belongsToVehicle,
       );
 }
 
@@ -131,7 +146,10 @@ class ChecklistVehicle {
         isPrimary: json['isPrimary'] as bool? ?? false,
         documents: (json['documents'] as List<dynamic>? ?? const [])
             .whereType<Map>()
-            .map((e) => ChecklistDocument.fromJson(e.cast<String, dynamic>()))
+            .map((e) => ChecklistDocument.fromJson(
+                  e.cast<String, dynamic>(),
+                  belongsToVehicle: true,
+                ))
             .toList(),
       );
 }

@@ -5,11 +5,9 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../shared/widgets/auth_header.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../domain/entities/checklist.dart';
-import '../../../../domain/entities/registration_drafts.dart';
 import '../controllers/checklist_controller.dart';
 import '../../../../shared/widgets/checklist_widgets.dart';
-import '../widgets/draft_sheet_scaffold.dart';
-import '../widgets/vehicle_draft_sheet.dart';
+import './vehicle_draft_screen.dart';
 import './vehicle_detail_screen.dart';
 
 /// The applicant's vehicles, one navigable row each, plus "add vehicle". Tapping a
@@ -136,23 +134,28 @@ class _VehiclesListScreenState extends State<VehiclesListScreen> {
     );
   }
 
+  /// Opens the LOCAL draft (2026-08-20). The vehicle is no longer built here
+  /// piece by piece: it is put together on the phone and sent whole, so this
+  /// screen only reloads when it comes back sent.
   Future<void> _addVehicle() async {
-    final draft = await showDraftSheet<VehicleItemDraft>(
-      context,
-      (_) => VehicleDraftSheet(vehicleTypes: _controller.vehicleTypes),
+    final sent = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const VehicleDraftScreen()),
     );
-    if (draft == null || !mounted) return;
-    await _controller.addVehicle(draft);
-    _showActionErrorIfAny();
+    if (sent == true && mounted) await _controller.load();
   }
 
-  void _showActionErrorIfAny() {
-    if (_controller.actionError != null && mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(_controller.actionError!)));
-      _controller.clearActionError();
-    }
+  /// A rejected vehicle becomes editable as a whole again. Its reason travels
+  /// along, so he reads what to fix on the same screen where he fixes it.
+  Future<void> _correctVehicle(ChecklistVehicle vehicle) async {
+    final sent = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => VehicleDraftScreen(
+          correctingVehicleId: vehicle.id,
+          rejectionReason: vehicle.rejectionReason,
+        ),
+      ),
+    );
+    if (sent == true && mounted) await _controller.load();
   }
 
   @override
@@ -217,7 +220,9 @@ class _VehiclesListScreenState extends State<VehiclesListScreen> {
                             onTap: () => _usePrimary(v.id),
                           )
                         : VehicleBadge(status: v.approvalStatus),
-                onTap: () => _openDetail(v),
+                // Rejected: straight to correcting it. Anything else opens its
+                // detail, which stays read-only while it is under review.
+                onTap: () => v.isRejected ? _correctVehicle(v) : _openDetail(v),
               ),
           if (widget.allowAdd) ...[
             const SizedBox(height: 8),

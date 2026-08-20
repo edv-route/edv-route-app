@@ -73,6 +73,22 @@ class VehicleDraftStore {
     return target.path;
   }
 
+  /// Same, for a file the picker handed over already read into memory (which is
+  /// what image_picker/file_picker give us). [fileName] is only used to keep the
+  /// extension; the stored name is generated.
+  Future<String> importBytes(
+    List<int> bytes, {
+    required String prefix,
+    required String fileName,
+  }) async {
+    await _filesDir.create(recursive: true);
+    final extension = _extensionOf(fileName);
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final target = File('${_filesDir.path}/${prefix}_$stamp$extension');
+    await target.writeAsBytes(bytes);
+    return target.path;
+  }
+
   /// Removes a copy that is no longer referenced (a replaced photo or document).
   Future<void> discardFile(String? path) async {
     if (path == null) return;

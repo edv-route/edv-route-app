@@ -12,6 +12,10 @@ class DriverRemoteDataSource {
 
   Future<List<dynamic>> vehicleTypes() => _client.getList('/driver-auth/vehicle-types');
 
+  /// Active document requirements (driver + vehicle), public: the draft needs the
+  /// vehicle ones before the vehicle exists on the server.
+  Future<List<dynamic>> requirements() => _client.getList('/driver-auth/requirements');
+
   /// Current active membership (name + price), or an empty map when none exists.
   Future<Map<String, dynamic>> membership() => _client.get('/driver-auth/membership');
 
