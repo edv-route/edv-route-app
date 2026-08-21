@@ -68,7 +68,11 @@ hay que tener presentes para no romper nada:
 
 ---
 
-## 4. ➡️ LO QUE SIGUE: Fase 4 — Firebase
+> ✅ **La Fase 4 se hizo el 2026-08-21 y está ENCENDIDA en producción.** Ese día además se
+> arreglaron once problemas salidos de usar la app en el teléfono. Continúa en
+> **[HANDOFF-2026-08-21.md](HANDOFF-2026-08-21.md)**.
+
+## 4. ~~LO QUE SIGUE~~: Fase 4 — Firebase ✅ HECHA
 
 Es lo único que falta del bloque. Nada de lo anterior depende de ello.
 
