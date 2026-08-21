@@ -29,6 +29,11 @@ class DraftSheetScaffold extends StatelessWidget {
   final VoidCallback onConfirm;
   final String? errorText;
 
+  /// The confirm action is RUNNING. The button spins, both ways out are frozen
+  /// and the sheet refuses to be dismissed: closing it mid-send left the driver
+  /// looking at a screen that said nothing while his payment travelled.
+  final bool busy;
+
   const DraftSheetScaffold({
     super.key,
     required this.title,
@@ -38,106 +43,134 @@ class DraftSheetScaffold extends StatelessWidget {
     required this.canConfirm,
     required this.onConfirm,
     this.errorText,
+    this.busy = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    return Padding(
-      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: media.size.height * 0.92),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Grab handle
-            Container(
-              margin: const EdgeInsets.only(top: 10),
-              height: 4,
-              width: 40,
-              decoration: BoxDecoration(
-                color: AppColors.fieldBorder,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 8, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                        if (subtitle != null && subtitle!.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(subtitle!, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-                        ],
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.muted),
-                    onPressed: () => Navigator.of(context).pop(),
-                    tooltip: 'Cerrar',
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            // Body (scrollable)
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                child: child,
-              ),
-            ),
-            if (errorText != null && errorText!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Text(
-                  errorText!,
-                  style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600),
+    // Blocks the back gesture and the drag-to-dismiss while the send is in
+    // flight: the sheet is the only thing telling him something is happening.
+    return PopScope(
+      canPop: !busy,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: media.size.height * 0.92),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Grab handle
+              Container(
+                margin: const EdgeInsets.only(top: 10),
+                height: 4,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.fieldBorder,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            const Divider(height: 1),
-            // Footer
-            Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + media.padding.bottom),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary900,
-                        side: const BorderSide(color: AppColors.fieldBorder),
-                        minimumSize: const Size(0, 54),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 8, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          if (subtitle != null && subtitle!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle!,
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      child: const Text('Cancelar'),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: PrimaryButton(
-                      label: confirmLabel,
-                      onPressed: canConfirm ? onConfirm : null,
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppColors.muted),
+                      onPressed: busy
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                      tooltip: 'Cerrar',
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+              const Divider(height: 1),
+              // Body (scrollable)
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  child: child,
+                ),
+              ),
+              if (errorText != null && errorText!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Text(
+                    errorText!,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              const Divider(height: 1),
+              // Footer
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  12,
+                  20,
+                  12 + media.padding.bottom,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: busy
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary900,
+                          side: const BorderSide(color: AppColors.fieldBorder),
+                          minimumSize: const Size(0, 54),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: PrimaryButton(
+                        label: confirmLabel,
+                        loading: busy,
+                        onPressed: canConfirm && !busy ? onConfirm : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

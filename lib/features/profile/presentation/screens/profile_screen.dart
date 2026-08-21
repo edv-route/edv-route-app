@@ -412,11 +412,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _openAdvance() async {
     final account = _profile.account;
     if (account == null) return;
-    final paid = await runAdvancePaymentFlow(context, account: account);
-    // Only reload when something actually happened: the card must show the
-    // payment under review, and reloading after he backed out would flicker
-    // for nothing.
-    if (paid && mounted) _profile.load();
+    // The reload runs INSIDE the flow, before the sheet closes, so the card is
+    // already showing «Pago en revisión» when it comes back into view.
+    await runAdvancePaymentFlow(
+      context,
+      account: account,
+      onSubmitted: () => _profile.load(),
+    );
   }
 
   /// Repeated concepts collapsed into one line with a count: a driver two weeks

@@ -111,31 +111,33 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
     final debt = _controller.debt;
     if (debt == null) return;
     final total = _totalFor(debt);
-    final item = await showPaymentSheet(
+    // Sent from INSIDE the sheet: the button spins there and the modal closes
+    // only once the server answered. Popping first and submitting after left a
+    // gap where nothing on screen said the payment was travelling.
+    await showPaymentSheet(
       context,
       methods: _controller.methods,
       totalLabel: formatUsd(total),
+      onSubmit: (captured) async {
+        final ok = await _controller.submit(
+          PaymentCapture(
+            paymentMethodId: captured.paymentMethodId,
+            reference: captured.reference,
+            payerBank: captured.payerBank,
+            paidOn: captured.paidOn,
+            payerPhone: captured.payerPhone,
+            payerId: captured.payerId,
+            payerAccount: captured.payerAccount,
+            receipt: captured.receipt,
+          ),
+          acceptedTerms: _acceptedTerms,
+          weeks: _weeks,
+        );
+        // The message stays IN the sheet, next to the data he would have to
+        // correct — not in a snackbar over a screen he can no longer edit.
+        return ok ? null : (_controller.error ?? 'No se pudo registrar el pago.');
+      },
     );
-    if (item == null || !mounted) return;
-    final ok = await _controller.submit(
-      PaymentCapture(
-        paymentMethodId: item.paymentMethodId,
-        reference: item.reference,
-        payerBank: item.payerBank,
-        paidOn: item.paidOn,
-        payerPhone: item.payerPhone,
-        payerId: item.payerId,
-        payerAccount: item.payerAccount,
-        receipt: item.receipt,
-      ),
-      acceptedTerms: _acceptedTerms,
-      weeks: _weeks,
-    );
-    if (!ok && _controller.error != null && mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(_controller.error!)));
-    }
   }
 
   @override

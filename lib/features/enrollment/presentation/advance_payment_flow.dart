@@ -23,6 +23,9 @@ import 'widgets/payment_draft_sheet.dart';
 Future<bool> runAdvancePaymentFlow(
   BuildContext context, {
   required AccountStatus account,
+  /// Reloads the caller's screen. Awaited BEFORE the sheet closes, so the state
+  /// behind it is already fresh when it comes into view.
+  Future<void> Function()? onSubmitted,
 }) async {
   final weeklyTariff = account.planPriceUsd;
   if (weeklyTariff == null) return false;
@@ -45,39 +48,47 @@ Future<bool> runAdvancePaymentFlow(
     return false;
   }
 
+  // The send happens INSIDE the sheet: the button spins, it cannot be dismissed
+  // mid-flight, and it closes only once the server answered. Popping first and
+  // submitting after left the driver staring at his profile with no sign that
+  // anything was happening (2026-08-21).
   final item = await showPaymentSheet(
     context,
     methods: methods,
     totalLabel: formatUsd(weeklyTariff * weeks),
+    subtitle: 'Registra cómo pagaste. Un administrador lo revisará.',
+    onSubmit: (captured) async {
+      try {
+        await Dependencies.instance.enrollmentRepository.submitPayment(
+          PaymentCapture(
+            paymentMethodId: captured.paymentMethodId,
+            reference: captured.reference,
+            payerBank: captured.payerBank,
+            paidOn: captured.paidOn,
+            payerPhone: captured.payerPhone,
+            payerId: captured.payerId,
+            payerAccount: captured.payerAccount,
+            receipt: captured.receipt,
+          ),
+          // He accepted them at his alta and the backend has the date stamped;
+          // asking an affiliate who has been working for months to tick the box
+          // again on every weekly payment is friction that decides nothing.
+          acceptedTerms: true,
+          weeks: weeks,
+          advance: true,
+        );
+      } on ApiException catch (e) {
+        return e.message;
+      } catch (_) {
+        return 'No se pudo registrar el pago. Intenta de nuevo.';
+      }
+      // Refreshed BEFORE the sheet closes, so what appears behind it is already
+      // the new state — never the old card for a blink.
+      await onSubmitted?.call();
+      return null;
+    },
   );
-  if (item == null || !context.mounted) return false;
-
-  try {
-    await Dependencies.instance.enrollmentRepository.submitPayment(
-      PaymentCapture(
-        paymentMethodId: item.paymentMethodId,
-        reference: item.reference,
-        payerBank: item.payerBank,
-        paidOn: item.paidOn,
-        payerPhone: item.payerPhone,
-        payerId: item.payerId,
-        payerAccount: item.payerAccount,
-        receipt: item.receipt,
-      ),
-      // He accepted them at his alta and the backend has the date stamped; asking
-      // an affiliate who has been working for months to tick the box again on
-      // every weekly payment is friction that decides nothing.
-      acceptedTerms: true,
-      weeks: weeks,
-      advance: true,
-    );
-  } on ApiException catch (e) {
-    if (context.mounted) _say(context, e.message);
-    return false;
-  } catch (_) {
-    if (context.mounted) _say(context, 'No se pudo registrar el pago. Intenta de nuevo.');
-    return false;
-  }
+  if (item == null) return false;
 
   if (context.mounted) {
     _say(context, 'Recibimos tu pago. Un administrador lo revisará.');
