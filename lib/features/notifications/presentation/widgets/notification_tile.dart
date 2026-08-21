@@ -16,7 +16,7 @@ class NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final look = _lookFor(item.type);
+    final look = lookFor(item.type);
     final unread = item.isUnread;
 
     return Material(
@@ -92,11 +92,16 @@ class NotificationTile extends StatelessWidget {
   }
 }
 
-typedef _Look = ({IconData icon, Color foreground, Color background});
+/// Icon + colours of a notice type. Public because the detail sheet paints the
+/// same badge: opening a notice must not look like a different screen.
+typedef NoticeLook = ({IconData icon, Color foreground, Color background});
 
 /// Icon and colour per notice type. Money in, money out and verdicts each read
 /// differently at a glance, which is what someone scrolling a list actually uses.
-_Look _lookFor(String type) {
+///
+/// Shared with the detail sheet: opening a notice must not feel like a different
+/// screen, so both read the same table.
+NoticeLook lookFor(String type) {
   const good = (foreground: Color(0xFF15803D), background: Color(0xFFDCFCE7));
   const bad = (foreground: AppColors.primary700, background: AppColors.primary100);
   const warn = (foreground: Color(0xFF9A6700), background: Color(0xFFFEF3C7));

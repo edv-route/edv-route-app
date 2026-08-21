@@ -5,6 +5,7 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../domain/entities/notification_item.dart';
 import '../../../../shared/widgets/gradient_header.dart';
 import '../../../../theme/app_colors.dart';
+import '../widgets/notification_detail_sheet.dart';
 import '../widgets/notification_tile.dart';
 
 /// The affiliate's inbox, opened from the bell in the header.
@@ -113,6 +114,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
       unawaited(_repository.markRead(item.id));
     }
+    // Opening it is the point. The list can only show a summary; this is where
+    // he reads the whole thing — above all the reason a payment was turned down,
+    // which is what he has to act on.
+    await showNotificationDetail(context, item);
   }
 
   Future<void> _markAll() async {
