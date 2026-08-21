@@ -5,6 +5,7 @@ import '../../../../core/push/push_service.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../domain/entities/account_status.dart';
 import '../../../../domain/entities/driver.dart';
+import '../../../../shared/widgets/notice_banner.dart';
 import '../../../notifications/presentation/screens/notifications_screen.dart';
 import './dashboard_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
@@ -41,11 +42,16 @@ class _DriverShellState extends State<DriverShell> {
     // (Android only renders push in the background). The shell owns the bell, so
     // it is the one that has to react: refresh the count and say it out loud.
     PushService.instance.arrived.addListener(_onPushArrived);
+    PushService.instance.openRequested.addListener(_onOpenRequested);
+    // A notification tapped with the app CLOSED sets the flag before this shell
+    // exists, so the tap has to be collected on mount or it is lost.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onOpenRequested());
   }
 
   @override
   void dispose() {
     PushService.instance.arrived.removeListener(_onPushArrived);
+    PushService.instance.openRequested.removeListener(_onOpenRequested);
     super.dispose();
   }
 
@@ -53,31 +59,22 @@ class _DriverShellState extends State<DriverShell> {
     final notice = PushService.instance.arrived.value;
     if (notice == null || !mounted) return;
     _loadAccount(); // the bell must move the moment the notice arrives
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.primary900,
-          duration: const Duration(seconds: 6),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                notice.title,
-                style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
-              ),
-              const SizedBox(height: 2),
-              Text(notice.body, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-            ],
-          ),
-          action: SnackBarAction(
-            label: 'Ver',
-            textColor: AppColors.gold,
-            onPressed: _openNotifications,
-          ),
-        ),
-      );
+    // A branded card dropping from the top, not a grey slab at the bottom:
+    // with the app open THIS is the notification as far as the driver is
+    // concerned, so it has to look like one.
+    showNoticeBanner(
+      context,
+      title: notice.title,
+      body: notice.body,
+      onTap: _openNotifications,
+    );
+  }
+
+  /// He tapped a notification on the phone: open the inbox.
+  void _onOpenRequested() {
+    if (!mounted) return;
+    if (!PushService.instance.takePendingOpen()) return;
+    _openNotifications();
   }
 
   /// Quiet on purpose: this feeds a badge and an informative banner. Failing
@@ -96,10 +93,17 @@ class _DriverShellState extends State<DriverShell> {
   /// Opens the inbox and takes the resulting count back from the pop. Refreshing
   /// the whole account here would be a second round trip for a number the screen
   /// he just closed already knows.
+  /// The inbox is already on screen. Tapping a second notification (or the bell
+  /// behind it) must not stack another copy of it.
+  bool _inboxOpen = false;
+
   Future<void> _openNotifications() async {
+    if (_inboxOpen) return;
+    _inboxOpen = true;
     final unread = await Navigator.of(context).push<int>(
       MaterialPageRoute(builder: (_) => const NotificationsScreen()),
     );
+    _inboxOpen = false;
     if (unread == null || !mounted) return;
     setState(() => _account = _account?.withUnread(unread));
   }

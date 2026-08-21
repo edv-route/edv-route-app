@@ -29,6 +29,30 @@ class PushService {
   final ValueNotifier<({String title, String body, DateTime at})?> arrived =
       ValueNotifier(null);
 
+  /// The driver TAPPED a notification and wants to see it. The shell listens and
+  /// opens the inbox.
+  ///
+  /// It is a notifier and not a direct navigation because the app may not be on
+  /// screen yet: tapping a push on a CLOSED app starts the process from zero,
+  /// and there is no navigator to push onto until the session resolves. The flag
+  /// waits; the shell picks it up when it mounts (see [takePendingOpen]).
+  final ValueNotifier<DateTime?> openRequested = ValueNotifier(null);
+
+  bool _pendingOpen = false;
+
+  /// True once, if a tap arrived before anyone was listening. The shell asks on
+  /// mount so a notification tapped with the app closed still lands on the inbox.
+  bool takePendingOpen() {
+    final pending = _pendingOpen;
+    _pendingOpen = false;
+    return pending;
+  }
+
+  void _requestOpen() {
+    _pendingOpen = true;
+    openRequested.value = DateTime.now();
+  }
+
   /// Firebase has to be up before anything asks for a token. Called once from
   /// `main`, before the first frame.
   static Future<void> initializeFirebase() async {
@@ -82,6 +106,17 @@ class PushService {
           at: DateTime.now(),
         );
       });
+
+      // Tapped while the app was in the BACKGROUND: it comes to the front and
+      // has to land on the notice, not on whatever screen it was left on.
+      // Without this the tap just raised the app and the driver had to hunt for
+      // the bell — which is why the notifications "could not be opened".
+      FirebaseMessaging.onMessageOpenedApp.listen((_) => _requestOpen());
+
+      // Tapped while the app was CLOSED. This is the message that started the
+      // process; it is delivered once and only if we ask for it.
+      final launcher = await messaging.getInitialMessage();
+      if (launcher != null) _requestOpen();
     } catch (error) {
       debugPrint('Avisos: no se pudo registrar el teléfono: $error');
     }
