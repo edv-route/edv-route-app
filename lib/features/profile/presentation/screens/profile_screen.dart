@@ -12,7 +12,7 @@ import '../../../../domain/entities/driver.dart';
 import '../../../../domain/entities/enrollment_cost.dart';
 import '../../../enrollment/presentation/controllers/checklist_controller.dart';
 import '../../../enrollment/presentation/screens/alta_payment_screen.dart';
-import '../../../enrollment/presentation/widgets/advance_weeks_sheet.dart';
+import '../../../enrollment/presentation/advance_payment_flow.dart';
 import '../../../enrollment/presentation/screens/documents_list_screen.dart';
 import '../../../enrollment/presentation/screens/vehicles_list_screen.dart';
 import '../../../../shared/widgets/checklist_widgets.dart';
@@ -412,22 +412,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _openAdvance() async {
     final account = _profile.account;
     if (account == null) return;
-    final weeks = await pickAdvanceWeeks(
-      context,
-      weeklyTariff: account.planPriceUsd!,
-      paidUntil: account.paidUntil,
-    );
-    if (weeks == null || !mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AltaPaymentScreen(
-          driver: widget.driver,
-          isEntrance: false,
-          advanceWeeks: weeks,
-        ),
-      ),
-    );
-    if (mounted) _profile.load();
+    final paid = await runAdvancePaymentFlow(context, account: account);
+    // Only reload when something actually happened: the card must show the
+    // payment under review, and reloading after he backed out would flicker
+    // for nothing.
+    if (paid && mounted) _profile.load();
   }
 
   /// Repeated concepts collapsed into one line with a count: a driver two weeks

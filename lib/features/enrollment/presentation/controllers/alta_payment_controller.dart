@@ -31,17 +31,14 @@ class AltaPaymentController extends ChangeNotifier {
   bool get submitting => _submitting;
   bool get submitted => _submitted;
 
-  Future<void> load({bool advance = false}) async {
+  Future<void> load() async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       final debt = await _account.loadDebt();
       _debt = debt;
-      // An ADVANCE has no debt by definition, so the methods must be fetched for
-      // it too — otherwise the form opens with an empty picker and the driver
-      // cannot say how he paid.
-      if ((debt.hasDebt || advance) && !debt.hasPendingPayment && _methods.isEmpty) {
+      if (debt.hasDebt && !debt.hasPendingPayment && _methods.isEmpty) {
         _methods = await _catalogs.loadPaymentMethods();
       }
     } on ApiException catch (e) {

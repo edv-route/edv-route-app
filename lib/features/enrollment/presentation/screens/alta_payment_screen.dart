@@ -35,16 +35,10 @@ class AltaPaymentScreen extends StatefulWidget {
   /// shell — he was already in it.
   final bool isEntrance;
 
-  /// Weeks to PREPAY while up to date. Null = the ordinary flow (settle the debt
-  /// or pay the alta). Chosen BEFORE this screen opens, because "adelantar"
-  /// means nothing until the driver knows how many weeks he is buying.
-  final int? advanceWeeks;
-
   const AltaPaymentScreen({
     super.key,
     required this.driver,
     this.isEntrance = true,
-    this.advanceWeeks,
   });
 
   @override
@@ -58,15 +52,13 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
     Dependencies.instance.accountRepository,
     Dependencies.instance.catalogsRepository,
   );
-  bool get _isAdvance => widget.advanceWeeks != null;
-
   bool _acceptedTerms = false;
   int _weeks = 1; // total weeks paid at the alta (1 = base only; more = advance)
 
   @override
   void initState() {
     super.initState();
-    _controller.load(advance: _isAdvance).then((_) {
+    _controller.load().then((_) {
       if (!mounted) return;
       // Only the ENTRANCE forwards anyone. Opened from the profile this screen
       // is stacked on top of the shell, and pushing another shell over it would
@@ -115,16 +107,10 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
   double _totalFor(AltaDebt debt) =>
       debt.totalUsd + (debt.weeklyTariffUsd ?? 0) * (_weeks - 1);
 
-  /// An advance is priced by the tariff alone (weeks × weekly price); a debt
-  /// payment by what is owed plus any extra weeks at the alta.
-  double _amountToCharge(AltaDebt debt) => _isAdvance
-      ? (debt.weeklyTariffUsd ?? 0) * widget.advanceWeeks!
-      : _totalFor(debt);
-
   Future<void> _pay() async {
     final debt = _controller.debt;
     if (debt == null) return;
-    final total = _amountToCharge(debt);
+    final total = _totalFor(debt);
     final item = await showPaymentSheet(
       context,
       methods: _controller.methods,
@@ -143,8 +129,7 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
         receipt: item.receipt,
       ),
       acceptedTerms: _acceptedTerms,
-      weeks: widget.advanceWeeks ?? _weeks,
-      advance: _isAdvance,
+      weeks: _weeks,
     );
     if (!ok && _controller.error != null && mounted) {
       ScaffoldMessenger.of(context)
@@ -162,14 +147,10 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
           // payment like any other — telling a driver who has been working for
           // weeks to "register the payment to activate himself" is simply false.
           AuthHeader(
-            title: _isAdvance
-                ? 'Adelantar pago'
-                : (widget.isEntrance ? 'Paga tu alta' : 'Reportar pago'),
-            subtitle: _isAdvance
-                ? 'Registra el pago de las semanas que adelantas.'
-                : (widget.isEntrance
-                    ? 'Tu ingreso fue aprobado. Registra el pago para activarte.'
-                    : 'Registra el pago que ya hiciste. Un administrador lo revisará.'),
+            title: widget.isEntrance ? 'Paga tu alta' : 'Reportar pago',
+            subtitle: widget.isEntrance
+                ? 'Tu ingreso fue aprobado. Registra el pago para activarte.'
+                : 'Registra el pago que ya hiciste. Un administrador lo revisará.',
           ),
           Expanded(
             child: ListenableBuilder(
@@ -191,11 +172,7 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
                         tariffStarted: widget.driver.tariffStarted,
                       )
                     : reportPaymentState(
-                        // An advance is payable BECAUSE there is no debt, so it
-                        // enters the form as if there were something to pay. A
-                        // payment already under review still wins — the backend
-                        // would refuse a second one anyway.
-                        hasDebt: debt.hasDebt || _isAdvance,
+                        hasDebt: debt.hasDebt,
                         hasPendingPayment: debt.hasPendingPayment,
                         justSubmitted: _controller.submitted,
                       );
@@ -241,26 +218,14 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
             _RejectedCard(rejection: debt.rejected!),
             const SizedBox(height: 16),
           ],
-          // An advance already chose its weeks in the sheet before this screen,
-          // so here it only confirms the number and the amount. Showing the
-          // weeks selector again would let him change what he already decided
-          // and quietly disagree with the total the sheet quoted him.
-          if (_isAdvance)
-            _AdvanceSummary(
-              weeks: widget.advanceWeeks!,
-              weeklyTariff: weekly ?? 0,
-              total: _amountToCharge(debt),
-            )
-          else ...[
-            _DebtCard(debt: debt, weeks: _weeks, total: _totalFor(debt)),
-            if (weekly != null) ...[
-              const SizedBox(height: 16),
-              _WeeksSelector(
-                weeks: _weeks,
-                weeklyTariff: weekly,
-                onChanged: (w) => setState(() => _weeks = w),
-              ),
-            ],
+          _DebtCard(debt: debt, weeks: _weeks, total: _totalFor(debt)),
+          if (weekly != null) ...[
+            const SizedBox(height: 16),
+            _WeeksSelector(
+              weeks: _weeks,
+              weeklyTariff: weekly,
+              onChanged: (w) => setState(() => _weeks = w),
+            ),
           ],
           const SizedBox(height: 20),
           _TermsCheck(
@@ -750,65 +715,6 @@ class _ErrorState extends StatelessWidget {
             OutlinedButton(onPressed: onRetry, child: const Text('Reintentar')),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// What an advance is about to charge. Read-only on purpose: the weeks were
-/// chosen in the sheet, and offering them again here would let the driver change
-/// his mind against a total he was already quoted.
-class _AdvanceSummary extends StatelessWidget {
-  final int weeks;
-  final double weeklyTariff;
-  final double total;
-
-  const _AdvanceSummary({
-    required this.weeks,
-    required this.weeklyTariff,
-    required this.total,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardGrey),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            weeks == 1 ? 'Adelantas 1 semana' : 'Adelantas $weeks semanas',
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '$weeks × ${formatUsd(weeklyTariff)}',
-                  style: const TextStyle(fontSize: 13, color: AppColors.muted),
-                ),
-              ),
-              Text(
-                formatUsd(total),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary700,
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
