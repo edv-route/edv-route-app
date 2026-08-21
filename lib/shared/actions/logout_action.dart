@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/di.dart';
+import '../../core/push/push_service.dart';
 import '../../routing/app_routes.dart';
 
 /// Confirms, clears the stored session, and returns to the mode-selection
@@ -25,6 +26,10 @@ Future<void> performLogout(BuildContext context) async {
   );
   if (confirmed != true) return;
 
+  // BEFORE clearing the session: revoking the phone's push token needs it. If
+  // this is skipped, the next person to sign in on this handset receives the
+  // previous driver's amounts and rejection reasons. It is privacy, not tidiness.
+  await PushService.instance.disable();
   await Dependencies.instance.authRepository.logout();
   if (context.mounted) {
     Navigator.of(context).pushNamedAndRemoveUntil(

@@ -27,4 +27,14 @@ class NotificationsRepositoryImpl extends SessionBoundRepository
     final json = await _remote.markAllNotificationsRead(token: await requireToken());
     return (json['marked'] as num?)?.toInt() ?? 0;
   }
+
+  @override
+  Future<void> registerDevice(String deviceToken) async {
+    await _remote.registerDeviceToken(deviceToken, token: await requireToken());
+  }
+
+  @override
+  Future<void> revokeDevice(String deviceToken) async {
+    await _remote.revokeDeviceToken(deviceToken, token: await requireToken());
+  }
 }

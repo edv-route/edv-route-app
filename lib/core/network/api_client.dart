@@ -50,6 +50,16 @@ class ApiClient {
   }) async =>
       _asMap(await _send('PATCH', path, body: body, token: token));
 
+  /// DELETE with a body — the one case is revoking this phone's push token on
+  /// logout, where the token identifies WHAT to delete but is too long and too
+  /// URL-hostile to sit in the path.
+  Future<Map<String, dynamic>> delete(
+    String path,
+    Map<String, dynamic> body, {
+    String? token,
+  }) async =>
+      _asMap(await _send('DELETE', path, body: body, token: token));
+
   /// GET whose payload is a JSON array (e.g. the requirement / payment catalogs).
   Future<List<dynamic>> getList(String path, {String? token}) async =>
       (await _send('GET', path, token: token)) as List<dynamic>? ?? const [];

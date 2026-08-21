@@ -15,4 +15,12 @@ abstract interface class NotificationsRepository {
 
   /// Clears the bell in one go. Returns how many were marked.
   Future<int> markAllRead();
+
+  /// Registers this phone to receive push. Idempotent: the app re-sends the
+  /// token on every start and whenever FCM rotates it.
+  Future<void> registerDevice(String deviceToken);
+
+  /// Logout: stops this phone from receiving HIS notices. Not optional — the
+  /// next person to use the handset must not get his amounts and rejections.
+  Future<void> revokeDevice(String deviceToken);
 }

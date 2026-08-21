@@ -60,6 +60,26 @@ class DriverRemoteDataSource {
   Future<Map<String, dynamic>> markAllNotificationsRead({required String token}) =>
       _client.post('/driver-auth/me/notifications/read-all', const {}, token: token);
 
+  /// Authenticated: registers this phone's FCM token (upsert on the server).
+  Future<Map<String, dynamic>> registerDeviceToken(
+    String deviceToken, {
+    required String token,
+    String platform = 'android',
+  }) =>
+      _client.post(
+        '/driver-auth/me/device-tokens',
+        {'token': deviceToken, 'platform': platform},
+        token: token,
+      );
+
+  /// Authenticated: logout — this phone stops receiving HIS notices.
+  Future<void> revokeDeviceToken(String deviceToken, {required String token}) =>
+      _client.delete(
+        '/driver-auth/me/device-tokens',
+        {'token': deviceToken},
+        token: token,
+      );
+
   /// Authenticated: the edit form's fields that do not travel in /me (address).
   Future<Map<String, dynamic>> editableData({required String token}) =>
       _client.get('/driver-auth/me/editable', token: token);

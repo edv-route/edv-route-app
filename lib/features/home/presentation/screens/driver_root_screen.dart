@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/push/push_service.dart';
 import '../../../../domain/entities/driver.dart';
 import '../../../enrollment/presentation/screens/alta_payment_screen.dart';
 import '../../../enrollment/presentation/screens/checklist_hub_screen.dart';
@@ -11,13 +12,32 @@ import './driver_status_screen.dart';
 /// deferred alta payment gate (which pays if he owes, or passes to the app shell
 /// when settled); any other status (in review / suspended / rejected) sees the
 /// status screen.
-class DriverRootScreen extends StatelessWidget {
+class DriverRootScreen extends StatefulWidget {
   final Driver driver;
 
   const DriverRootScreen({super.key, required this.driver});
 
   @override
+  State<DriverRootScreen> createState() => _DriverRootScreenState();
+}
+
+class _DriverRootScreenState extends State<DriverRootScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // The push token is registered HERE and not in the shell because an
+    // `applicant` never reaches the shell — and he is precisely the one waiting
+    // for the verdict of his solicitud. This is the one point every
+    // authenticated state passes through, whatever screen it lands on.
+    //
+    // Not awaited: it asks for a permission and talks to two networks, and the
+    // driver must not stare at a blank screen while that happens.
+    PushService.instance.syncToken();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final driver = widget.driver;
     switch (driver.status) {
       case DriverStatus.applicant:
         return const ChecklistHubScreen();
