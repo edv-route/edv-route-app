@@ -381,11 +381,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// app: the screen simply said he was up to date and ended there.
   Widget _advanceLink() {
     final account = _profile.account;
-    // Needs a weekly price to quote and a cap from the server. Without either,
-    // showing the link would lead to a screen that cannot compute a total.
-    if (account?.planPriceUsd == null || (account?.maxAdvanceWeeks ?? 0) < 1) {
-      return const SizedBox.shrink();
-    }
+    // Needs a weekly price to quote with. Without it the link would lead to a
+    // screen that cannot compute a total.
+    if (account?.planPriceUsd == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: InkWell(
@@ -417,7 +415,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final weeks = await pickAdvanceWeeks(
       context,
       weeklyTariff: account.planPriceUsd!,
-      maxWeeks: account.maxAdvanceWeeks,
       paidUntil: account.paidUntil,
     );
     if (weeks == null || !mounted) return;

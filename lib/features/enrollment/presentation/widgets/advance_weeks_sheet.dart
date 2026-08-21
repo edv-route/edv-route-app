@@ -16,31 +16,21 @@ import '../../../../theme/app_colors.dart';
 Future<int?> pickAdvanceWeeks(
   BuildContext context, {
   required double weeklyTariff,
-  required int maxWeeks,
   DateTime? paidUntil,
 }) {
   return showModalBottomSheet<int>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _AdvanceWeeksSheet(
-      weeklyTariff: weeklyTariff,
-      maxWeeks: maxWeeks,
-      paidUntil: paidUntil,
-    ),
+    builder: (_) => _AdvanceWeeksSheet(weeklyTariff: weeklyTariff, paidUntil: paidUntil),
   );
 }
 
 class _AdvanceWeeksSheet extends StatefulWidget {
   final double weeklyTariff;
-  final int maxWeeks;
   final DateTime? paidUntil;
 
-  const _AdvanceWeeksSheet({
-    required this.weeklyTariff,
-    required this.maxWeeks,
-    this.paidUntil,
-  });
+  const _AdvanceWeeksSheet({required this.weeklyTariff, this.paidUntil});
 
   @override
   State<_AdvanceWeeksSheet> createState() => _AdvanceWeeksSheetState();
@@ -151,8 +141,8 @@ class _AdvanceWeeksSheetState extends State<_AdvanceWeeksSheet> {
         children: [
           _round(
             icon: Icons.remove,
-            // Disabled at the ends instead of wrapping around: a counter that
-            // jumps from 1 to 12 reads as a bug.
+            // One is the floor; no ceiling. Prepaying as many weeks as he wants
+            // is a decision already taken — the server only guards against a typo.
             enabled: _weeks > 1,
             filled: false,
             onTap: () => setState(() => _weeks--),
@@ -177,7 +167,9 @@ class _AdvanceWeeksSheetState extends State<_AdvanceWeeksSheet> {
           ),
           _round(
             icon: Icons.add,
-            enabled: _weeks < widget.maxWeeks,
+            // No product cap: prepaying is free (decision taken long ago). The
+            // only ceiling is a technical guard on the server against a typo.
+            enabled: true,
             filled: true,
             onTap: () => setState(() => _weeks++),
           ),
