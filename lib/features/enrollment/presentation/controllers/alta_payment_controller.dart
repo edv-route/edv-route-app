@@ -31,14 +31,17 @@ class AltaPaymentController extends ChangeNotifier {
   bool get submitting => _submitting;
   bool get submitted => _submitted;
 
-  Future<void> load() async {
+  Future<void> load({bool advance = false}) async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       final debt = await _account.loadDebt();
       _debt = debt;
-      if (debt.hasDebt && !debt.hasPendingPayment && _methods.isEmpty) {
+      // An ADVANCE has no debt by definition, so the methods must be fetched for
+      // it too — otherwise the form opens with an empty picker and the driver
+      // cannot say how he paid.
+      if ((debt.hasDebt || advance) && !debt.hasPendingPayment && _methods.isEmpty) {
         _methods = await _catalogs.loadPaymentMethods();
       }
     } on ApiException catch (e) {
@@ -50,13 +53,23 @@ class AltaPaymentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> submit(PaymentCapture capture, {required bool acceptedTerms, int weeks = 1}) async {
+  Future<bool> submit(
+    PaymentCapture capture, {
+    required bool acceptedTerms,
+    int weeks = 1,
+    bool advance = false,
+  }) async {
     if (_submitting) return false;
     _submitting = true;
     _error = null;
     notifyListeners();
     try {
-      await _repository.submitPayment(capture, acceptedTerms: acceptedTerms, weeks: weeks);
+      await _repository.submitPayment(
+        capture,
+        acceptedTerms: acceptedTerms,
+        weeks: weeks,
+        advance: advance,
+      );
       _submitted = true;
       _submitting = false;
       notifyListeners();

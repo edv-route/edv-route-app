@@ -12,6 +12,7 @@ import '../../../../domain/entities/driver.dart';
 import '../../../../domain/entities/enrollment_cost.dart';
 import '../../../enrollment/presentation/controllers/checklist_controller.dart';
 import '../../../enrollment/presentation/screens/alta_payment_screen.dart';
+import '../../../enrollment/presentation/widgets/advance_weeks_sheet.dart';
 import '../../../enrollment/presentation/screens/documents_list_screen.dart';
 import '../../../enrollment/presentation/screens/vehicles_list_screen.dart';
 import '../../../../shared/widgets/checklist_widgets.dart';
@@ -364,8 +365,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: TextStyle(fontSize: 13, color: AppColors.ink, height: 1.35),
         ),
         _coverageLines(),
+        _advanceLink(),
       ],
     );
+  }
+
+  /// Prepay weeks while up to date.
+  ///
+  /// A LINK, not a button, and only in this branch: the driver who owes gets a
+  /// solid «Pagar» because it is urgent, and this one gets a quiet line because
+  /// it is optional. The visual weight is what tells the two apart without
+  /// reading a word — which is the whole point of showing it only here.
+  ///
+  /// Until now an affiliate with zero debt had no way to pay ANYTHING from the
+  /// app: the screen simply said he was up to date and ended there.
+  Widget _advanceLink() {
+    final account = _profile.account;
+    // Needs a weekly price to quote and a cap from the server. Without either,
+    // showing the link would lead to a screen that cannot compute a total.
+    if (account?.planPriceUsd == null || (account?.maxAdvanceWeeks ?? 0) < 1) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: InkWell(
+        onTap: _openAdvance,
+        child: Container(
+          padding: const EdgeInsets.only(top: 10),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.cardGrey)),
+          ),
+          child: const Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Adelantar pago',
+                  style: TextStyle(fontSize: 13.5, color: AppColors.primary700),
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 18, color: AppColors.primary700),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openAdvance() async {
+    final account = _profile.account;
+    if (account == null) return;
+    final weeks = await pickAdvanceWeeks(
+      context,
+      weeklyTariff: account.planPriceUsd!,
+      maxWeeks: account.maxAdvanceWeeks,
+      paidUntil: account.paidUntil,
+    );
+    if (weeks == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AltaPaymentScreen(
+          driver: widget.driver,
+          isEntrance: false,
+          advanceWeeks: weeks,
+        ),
+      ),
+    );
+    if (mounted) _profile.load();
   }
 
   /// Repeated concepts collapsed into one line with a count: a driver two weeks

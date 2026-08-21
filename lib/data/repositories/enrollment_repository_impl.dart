@@ -124,16 +124,18 @@ class EnrollmentRepositoryImpl extends SessionBoundRepository implements Enrollm
     PaymentCapture capture, {
     required bool acceptedTerms,
     int weeks = 1,
+    bool advance = false,
   }) async {
     final fields = <String, String>{
-      // Deferred alta payment: settle the whole owed debt after approval, with the
-      // terms & conditions acceptance the backend gate requires.
-      'purpose': 'debt',
+      // `advance` = prepay weeks while up to date; `debt` = settle what is owed
+      // after approval. Both carry the terms acceptance the backend gate requires.
+      'purpose': advance ? 'advance' : 'debt',
       'acceptedTerms': acceptedTerms ? 'true' : 'false',
       'paymentMethodId': '${capture.paymentMethodId}',
       'paidOn': capture.paidOn,
-      // Forma A: total weeks paid at the alta (base + advance). Omitted when 1.
-      if (weeks > 1) 'periods': '$weeks',
+      // An advance is DEFINED by its weeks, so it always sends them; a debt only
+      // does when it prepays extra ones at the alta (Forma A).
+      if (advance || weeks > 1) 'periods': '$weeks',
       if (_notEmpty(capture.reference)) 'reference': capture.reference!,
       if (_notEmpty(capture.payerBank)) 'payerBank': capture.payerBank!,
       if (_notEmpty(capture.payerPhone)) 'payerPhone': capture.payerPhone!,

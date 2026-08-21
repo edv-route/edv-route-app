@@ -76,5 +76,12 @@ abstract interface class EnrollmentRepository {
   /// and requires accepting the terms. Left pending for an admin to review.
   /// [weeks] is the TOTAL paid at the alta (1 = base only; N = base + N-1 in
   /// advance).
-  Future<void> submitPayment(PaymentCapture capture, {required bool acceptedTerms, int weeks});
+  /// [advance] true = prepay [weeks] while up to date (purpose `advance`);
+  /// false = settle the debt, where [weeks] is the alta's Forma A total.
+  Future<void> submitPayment(
+    PaymentCapture capture, {
+    required bool acceptedTerms,
+    int weeks,
+    bool advance,
+  });
 }

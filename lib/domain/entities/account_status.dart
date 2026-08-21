@@ -42,6 +42,11 @@ class AccountStatus {
   /// stale number while the rest of the screen is fresh.
   final int unreadNotifications;
 
+  /// Weeks he may prepay from the app. Comes from the SERVER so the wheel can
+  /// never offer a number the backend would refuse — the app must not carry its
+  /// own copy of a business limit.
+  final int maxAdvanceWeeks;
+
   const AccountStatus({
     required this.driverStatus,
     this.reactivatesAt,
@@ -54,6 +59,7 @@ class AccountStatus {
     this.capWeeks = 2,
     this.planPriceUsd,
     this.unreadNotifications = 0,
+    this.maxAdvanceWeeks = 0,
   });
 
   bool get isPenalized => driverStatus == 'penalized';
@@ -91,6 +97,7 @@ class AccountStatus {
         capWeeks: (json['capWeeks'] as num?)?.toInt() ?? 2,
         planPriceUsd: double.tryParse(json['planPriceUsd'] as String? ?? ''),
         unreadNotifications: (json['unreadNotifications'] as num?)?.toInt() ?? 0,
+        maxAdvanceWeeks: (json['maxAdvanceWeeks'] as num?)?.toInt() ?? 0,
       );
 
   /// Same standing with a fresh unread count, for when the inbox reports back
@@ -107,6 +114,7 @@ class AccountStatus {
         capWeeks: capWeeks,
         planPriceUsd: planPriceUsd,
         unreadNotifications: unread,
+        maxAdvanceWeeks: maxAdvanceWeeks,
       );
 
   static DateTime? _date(Object? value) =>
