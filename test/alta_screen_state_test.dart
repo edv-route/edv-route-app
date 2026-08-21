@@ -41,17 +41,68 @@ void main() {
   });
 
   group('a payment already sent wins over the debt (never pay twice)', () {
+    // At the ENTRANCE only: he cannot come in until an admin reviews it.
     test('a pending submission shows the review state even while he owes', () {
       expect(
-        state(hasDebt: true, hasPendingPayment: true),
+        state(hasDebt: true, hasPendingPayment: true, tariffStarted: false),
         AltaScreenState.paymentUnderReview,
       );
     });
 
     test('just submitted shows the review state before the backend catches up', () {
       expect(
-        state(hasDebt: true, justSubmitted: true),
+        state(hasDebt: true, justSubmitted: true, tariffStarted: false),
         AltaScreenState.paymentUnderReview,
+      );
+    });
+  });
+
+  group('an affiliate who is already working is never held on this screen', () {
+    // THE REGRESSION (2026-08-21): a driver who had been working for weeks
+    // reported a payment and was thrown onto a waiting screen whose only button
+    // was «Cerrar sesión» — locked out of his own account until an admin got
+    // around to reviewing him.
+    test('operating + payment under review still belongs in the app', () {
+      expect(state(hasPendingPayment: true), AltaScreenState.settled);
+    });
+
+    test('operating + just submitted still belongs in the app', () {
+      expect(state(justSubmitted: true), AltaScreenState.settled);
+    });
+
+    test('operating + owing his week still belongs in the app', () {
+      // He pays from inside, from his profile. Owing is not a reason to be
+      // thrown out of the app — it is a reason to be shown the debt.
+      expect(state(hasDebt: true), AltaScreenState.settled);
+    });
+  });
+
+  group('the report-payment screen (opened from the profile)', () {
+    test('owing shows the payment form', () {
+      expect(
+        reportPaymentState(hasDebt: true, hasPendingPayment: false, justSubmitted: false),
+        AltaScreenState.pay,
+      );
+    });
+
+    test('a payment under review shows the notice, not the form', () {
+      expect(
+        reportPaymentState(hasDebt: true, hasPendingPayment: true, justSubmitted: false),
+        AltaScreenState.paymentUnderReview,
+      );
+    });
+
+    test('just submitted shows the notice immediately', () {
+      expect(
+        reportPaymentState(hasDebt: true, hasPendingPayment: false, justSubmitted: true),
+        AltaScreenState.paymentUnderReview,
+      );
+    });
+
+    test('nothing to pay says so instead of showing an empty form', () {
+      expect(
+        reportPaymentState(hasDebt: false, hasPendingPayment: false, justSubmitted: false),
+        AltaScreenState.nothingOwed,
       );
     });
   });

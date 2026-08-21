@@ -4,7 +4,6 @@ import '../../../../core/utils/date_format.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../shared/widgets/brand_text_field.dart';
-import '../../../../theme/app_colors.dart';
 import '../../../../data/payment_catalogs.dart';
 import '../../../../domain/entities/payment_method_option.dart';
 import '../../../../domain/entities/picked_image.dart';
@@ -99,6 +98,21 @@ class PaymentFormState extends State<PaymentForm> {
     if (picked != null) setState(() => _paidOn = picked);
   }
 
+  /// The method list used to be printed in full, one card per method, above the
+  /// form. With five methods it already pushed everything below the fold, and
+  /// the driver had to scroll past all of them to reach the fields — on a sheet
+  /// that is itself scrollable. It is a single choice from a closed list, which
+  /// is exactly what the picker (already used for the bank) is for.
+  Future<void> _pickMethod() async {
+    final method = await pickFromSheet<PaymentMethodOption>(
+      context,
+      title: 'Selecciona el método de pago',
+      items: widget.paymentMethods,
+      labelOf: (m) => m.name,
+    );
+    if (method != null) setState(() => _method = method);
+  }
+
   Future<void> _pickBank() async {
     final bank = await pickFromSheet<String>(
       context,
@@ -177,19 +191,12 @@ class PaymentFormState extends State<PaymentForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Método de pago',
-          style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary900),
+        PickerField(
+          label: 'Método de pago',
+          value: selected?.name,
+          hint: 'Selecciona cómo pagaste',
+          onTap: _pickMethod,
         ),
-        const SizedBox(height: 8),
-        for (final m in widget.paymentMethods) ...[
-          MethodTile(
-            method: m,
-            selected: selected?.id == m.id,
-            onTap: () => setState(() => _method = m),
-          ),
-          const SizedBox(height: 8),
-        ],
         if (selected != null) ...[
           const SizedBox(height: 6),
           // Destination account of the chosen method (where the driver paid).

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di.dart';
+import '../../../../core/push/push_service.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../domain/entities/account_status.dart';
 import '../../../../domain/entities/driver.dart';
@@ -36,6 +37,47 @@ class _DriverShellState extends State<DriverShell> {
   void initState() {
     super.initState();
     _loadAccount();
+    // A notice that lands while he is using the app draws NOTHING by itself
+    // (Android only renders push in the background). The shell owns the bell, so
+    // it is the one that has to react: refresh the count and say it out loud.
+    PushService.instance.arrived.addListener(_onPushArrived);
+  }
+
+  @override
+  void dispose() {
+    PushService.instance.arrived.removeListener(_onPushArrived);
+    super.dispose();
+  }
+
+  void _onPushArrived() {
+    final notice = PushService.instance.arrived.value;
+    if (notice == null || !mounted) return;
+    _loadAccount(); // the bell must move the moment the notice arrives
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primary900,
+          duration: const Duration(seconds: 6),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                notice.title,
+                style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
+              ),
+              const SizedBox(height: 2),
+              Text(notice.body, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            ],
+          ),
+          action: SnackBarAction(
+            label: 'Ver',
+            textColor: AppColors.gold,
+            onPressed: _openNotifications,
+          ),
+        ),
+      );
   }
 
   /// Quiet on purpose: this feeds a badge and an informative banner. Failing

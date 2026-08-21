@@ -23,6 +23,12 @@ class PushService {
   bool _started = false;
   String? _token;
 
+  /// Last notice that arrived WHILE THE APP WAS OPEN. The shell listens to this
+  /// to refresh the bell and show a banner; nothing else in the app has to know
+  /// that Firebase exists.
+  final ValueNotifier<({String title, String body, DateTime at})?> arrived =
+      ValueNotifier(null);
+
   /// Firebase has to be up before anything asks for a token. Called once from
   /// `main`, before the first frame.
   static Future<void> initializeFirebase() async {
@@ -57,6 +63,25 @@ class PushService {
       if (token != null) await _register(token);
 
       messaging.onTokenRefresh.listen(_register);
+
+      // WITH THE APP OPEN, ANDROID DRAWS NOTHING. A notification message is
+      // rendered by the system only while the app is in the background or
+      // closed; in the foreground FCM hands it to this stream and, if nobody
+      // listens, it disappears in silence. That is why three pushes came out
+      // `sent` on 2026-08-21 and none was seen: the driver was using the app.
+      //
+      // Nothing is drawn from here either — the notice already IS in his inbox.
+      // What this does is tell whoever is on screen that the bell changed, which
+      // is the honest in-app equivalent of a banner.
+      FirebaseMessaging.onMessage.listen((message) {
+        final notification = message.notification;
+        if (notification == null) return;
+        arrived.value = (
+          title: notification.title ?? '',
+          body: notification.body ?? '',
+          at: DateTime.now(),
+        );
+      });
     } catch (error) {
       debugPrint('Avisos: no se pudo registrar el teléfono: $error');
     }

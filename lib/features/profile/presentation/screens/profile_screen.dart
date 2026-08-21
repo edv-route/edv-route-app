@@ -86,8 +86,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _openPayment() {
+    // Stacked, NOT the entrance: he is already inside the app and must be able
+    // to come back — with or without the payment sent.
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AltaPaymentScreen(driver: widget.driver)),
+      MaterialPageRoute(
+        builder: (_) => AltaPaymentScreen(driver: widget.driver, isEntrance: false),
+      ),
     );
   }
 

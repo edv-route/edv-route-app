@@ -25,7 +25,21 @@ import '../widgets/payment_draft_sheet.dart';
 class AltaPaymentScreen extends StatefulWidget {
   final Driver driver;
 
-  const AltaPaymentScreen({super.key, required this.driver});
+  /// True when this is the ENTRANCE gate (routed from `DriverRootScreen`): the
+  /// driver is not inside the app yet, so the ways out are entering once settled
+  /// or logging out.
+  ///
+  /// False when an affiliate who is ALREADY WORKING opened it from his profile
+  /// to report a payment. Then it is one more stacked screen: the way out is
+  /// going back, there is no logout, and above all it must never replace the
+  /// shell — he was already in it.
+  final bool isEntrance;
+
+  const AltaPaymentScreen({
+    super.key,
+    required this.driver,
+    this.isEntrance = true,
+  });
 
   @override
   State<AltaPaymentScreen> createState() => _AltaPaymentScreenState();
@@ -46,6 +60,10 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
     super.initState();
     _controller.load().then((_) {
       if (!mounted) return;
+      // Only the ENTRANCE forwards anyone. Opened from the profile this screen
+      // is stacked on top of the shell, and pushing another shell over it would
+      // duplicate the app the driver is already using.
+      if (!widget.isEntrance) return;
       final debt = _controller.debt;
       // Settled AND the admin already set the tariff start → an operating driver:
       // go straight to the app shell. Any other case stays on this screen, which
@@ -75,6 +93,9 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.selection, (_) => false);
   }
+
+  /// Back to wherever he came from (the profile). Only for the stacked screen.
+  void _goBack() => Navigator.of(context).maybePop();
 
   void _enterApp() {
     Navigator.of(context).pushReplacement(
@@ -122,9 +143,14 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
     return Scaffold(
       body: Column(
         children: [
-          const AuthHeader(
-            title: 'Paga tu alta',
-            subtitle: 'Tu ingreso fue aprobado. Registra el pago para activarte.',
+          // The entrance is still "paga tu alta". From the profile it is a
+          // payment like any other — telling a driver who has been working for
+          // weeks to "register the payment to activate himself" is simply false.
+          AuthHeader(
+            title: widget.isEntrance ? 'Paga tu alta' : 'Reportar pago',
+            subtitle: widget.isEntrance
+                ? 'Tu ingreso fue aprobado. Registra el pago para activarte.'
+                : 'Registra el pago que ya hiciste. Un administrador lo revisará.',
           ),
           Expanded(
             child: ListenableBuilder(
@@ -137,15 +163,25 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
                   return _ErrorState(message: _controller.error!, onRetry: _controller.load);
                 }
                 final debt = _controller.debt!;
-                switch (altaScreenState(
-                  hasDebt: debt.hasDebt,
-                  hasPendingPayment: debt.hasPendingPayment,
-                  justSubmitted: _controller.submitted,
-                  isApproved: widget.driver.status == DriverStatus.approved,
-                  tariffStarted: widget.driver.tariffStarted,
-                )) {
+                final state = widget.isEntrance
+                    ? altaScreenState(
+                        hasDebt: debt.hasDebt,
+                        hasPendingPayment: debt.hasPendingPayment,
+                        justSubmitted: _controller.submitted,
+                        isApproved: widget.driver.status == DriverStatus.approved,
+                        tariffStarted: widget.driver.tariffStarted,
+                      )
+                    : reportPaymentState(
+                        hasDebt: debt.hasDebt,
+                        hasPendingPayment: debt.hasPendingPayment,
+                        justSubmitted: _controller.submitted,
+                      );
+                switch (state) {
                   case AltaScreenState.paymentUnderReview:
-                    return _PendingState(onLogout: _logout);
+                    return _PendingState(
+                      onLogout: widget.isEntrance ? _logout : null,
+                      onBack: widget.isEntrance ? null : _goBack,
+                    );
                   case AltaScreenState.pay:
                     return _payContent(debt);
                   // Still `pending` and owing nothing: it is the ADMIN's turn.
@@ -157,6 +193,8 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
                     return _WaitingStartState(onLogout: _logout);
                   case AltaScreenState.settled:
                     return _SettledState(onEnter: _enterApp);
+                  case AltaScreenState.nothingOwed:
+                    return _NothingOwedState(onBack: _goBack);
                 }
               },
             ),
@@ -201,13 +239,22 @@ class _AltaPaymentScreenState extends State<AltaPaymentScreen> {
             onPressed: _acceptedTerms ? _pay : null,
           ),
           const SizedBox(height: 8),
+          // Logging out is an exit only for someone who has not come in yet. An
+          // affiliate reporting a payment from his profile gets «Cancelar»: he
+          // is inside the app and this is one screen, not a gate.
           Center(
-            child: TextButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout, size: 18),
-              label: const Text('Cerrar sesión'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary900),
-            ),
+            child: widget.isEntrance
+                ? TextButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout, size: 18),
+                    label: const Text('Cerrar sesión'),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.primary900),
+                  )
+                : TextButton(
+                    onPressed: _goBack,
+                    style: TextButton.styleFrom(foregroundColor: AppColors.primary900),
+                    child: const Text('Cancelar'),
+                  ),
           ),
         ],
       ),
@@ -478,13 +525,20 @@ class _TermsCheck extends StatelessWidget {
 }
 
 /// Shown after paying (or when a payment is already under review).
+///
+/// The way out depends on where the driver came from, and getting that wrong is
+/// what locked an affiliate out of his own account: at the ENTRANCE the only
+/// honest exit is logging out (he cannot come in until the payment is approved),
+/// but for someone already working the exit is simply going back to the app.
 class _PendingState extends StatelessWidget {
-  final Future<void> Function() onLogout;
+  final Future<void> Function()? onLogout;
+  final VoidCallback? onBack;
 
-  const _PendingState({required this.onLogout});
+  const _PendingState({this.onLogout, this.onBack});
 
   @override
   Widget build(BuildContext context) {
+    final entering = onLogout != null;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -498,19 +552,61 @@ class _PendingState extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink),
             ),
             const SizedBox(height: 8),
+            Text(
+              entering
+                  ? 'Un administrador lo verificará y activaremos tu cuenta. '
+                      'Te avisaremos cuando esté listo.'
+                  : 'Un administrador lo verificará. Te avisamos apenas responda, '
+                      'y mientras tanto puedes seguir usando la app con normalidad.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: AppColors.muted, height: 1.35),
+            ),
+            const SizedBox(height: 24),
+            if (entering)
+              TextButton.icon(
+                onPressed: onLogout,
+                icon: const Icon(Icons.logout, size: 18),
+                label: const Text('Cerrar sesión'),
+                style: TextButton.styleFrom(foregroundColor: AppColors.primary900),
+              )
+            else
+              PrimaryButton(label: 'Volver a la app', onPressed: onBack),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Report-payment screen with nothing to pay: he is up to date. A dead end here
+/// would be as wrong as the one above — the way out is going back.
+class _NothingOwedState extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _NothingOwedState({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle_outline, color: Color(0xFF15803D), size: 48),
+            const SizedBox(height: 16),
             const Text(
-              'Un administrador lo verificará y activaremos tu cuenta. '
-              'Te avisaremos cuando esté listo.',
+              'Estás al día',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'No tienes nada pendiente por pagar en este momento.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: AppColors.muted, height: 1.35),
             ),
             const SizedBox(height: 24),
-            TextButton.icon(
-              onPressed: onLogout,
-              icon: const Icon(Icons.logout, size: 18),
-              label: const Text('Cerrar sesión'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary900),
-            ),
+            PrimaryButton(label: 'Volver a la app', onPressed: onBack),
           ],
         ),
       ),

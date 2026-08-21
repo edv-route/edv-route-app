@@ -41,8 +41,17 @@ class _DriverRootScreenState extends State<DriverRootScreen> {
     switch (driver.status) {
       case DriverStatus.applicant:
         return const ChecklistHubScreen();
+      // An approved driver whose tariff ALREADY STARTED is an affiliate who has
+      // been working: the app opens on the app, not on a payment gate. Only the
+      // one still waiting for the office to activate him passes through the alta
+      // screen. Before this, an operating driver who owed his week landed on
+      // "Paga tu alta — registra el pago para activarte", which is false for
+      // someone who has been driving for weeks, and a payment left him locked
+      // out of his own account (2026-08-21).
       case DriverStatus.approved:
-        return AltaPaymentScreen(driver: driver);
+        return driver.tariffStarted
+            ? DriverShell(driver: driver)
+            : AltaPaymentScreen(driver: driver);
       // A driver in arrears — even a PENALIZED one — enters the app (decision
       // 2026-08-18): he must be able to see what he owes and pay it. What he
       // loses is the WORK: no trips, no benefits (and more restrictions to come).
