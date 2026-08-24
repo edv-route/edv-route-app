@@ -95,9 +95,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return null;
   }
 
+  /// Email is REQUIRED here too: clearing it would strip the account of the only
+  /// channel its password can be recovered through. The backend rejects a blank
+  /// one as well - this just says so before the round trip.
   String? _validateEmail(String? v) {
     final t = (v ?? '').trim();
-    if (t.isEmpty) return null;
+    if (t.isEmpty) return 'Ingresa tu correo electrónico.';
     if (!_emailRegex.hasMatch(t)) return 'Correo inválido.';
     return null;
   }

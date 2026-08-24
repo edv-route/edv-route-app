@@ -108,9 +108,12 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     return null;
   }
 
+  /// Email is REQUIRED: it is the channel a forgotten password is recovered
+  /// through, so an affiliate who registers without one has no way back into
+  /// the app. The panel has always demanded it; this channel used to not.
   String? _validateEmail(String? v) {
     final t = (v ?? '').trim();
-    if (t.isEmpty) return null;
+    if (t.isEmpty) return 'Ingresa tu correo electrónico.';
     if (!_emailRegex.hasMatch(t)) return 'Correo inválido.';
     return null;
   }
@@ -265,7 +268,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     ),
                     const SizedBox(height: 14),
                     BrandTextField(
-                      label: 'Correo (opcional)',
+                      label: 'Correo',
                       controller: _email,
                       hintText: 'correo@ejemplo.com',
                       keyboardType: TextInputType.emailAddress,
