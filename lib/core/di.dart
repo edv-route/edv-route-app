@@ -8,8 +8,10 @@ import '../domain/repositories/account_repository.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/catalogs_repository.dart';
 import '../data/repositories/notifications_repository_impl.dart';
+import '../data/repositories/password_reset_repository_impl.dart';
 import '../domain/repositories/enrollment_repository.dart';
 import '../domain/repositories/notifications_repository.dart';
+import '../domain/repositories/password_reset_repository.dart';
 import './network/api_client.dart';
 import './storage/token_storage.dart';
 
@@ -47,4 +49,10 @@ class Dependencies {
   /// His inbox: the notices the office and the debt engine send him.
   late final NotificationsRepository notificationsRepository =
       NotificationsRepositoryImpl(_driverApi, tokenStorage);
+
+
+  /// Recovering a forgotten password. The ONLY repository that takes no token:
+  /// a driver who cannot log in has no session to authenticate with.
+  late final PasswordResetRepository passwordResetRepository =
+      PasswordResetRepositoryImpl(_apiClient);
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import './features/auth/presentation/screens/driver_login_screen.dart';
+import 'features/auth/presentation/screens/password_reset_identity_screen.dart';
 import './features/auth/presentation/screens/driver_register_screen.dart';
 import './features/enrollment/presentation/screens/membership_info_screen.dart';
 import './features/auth/presentation/screens/splash_screen.dart';
@@ -32,6 +33,7 @@ class EdvRouteApp extends StatelessWidget {
         AppRoutes.boot: (_) => const SplashScreen(),
         AppRoutes.selection: (_) => const UserTypeSelectionScreen(),
         AppRoutes.driverLogin: (_) => const DriverLoginScreen(),
+        AppRoutes.passwordReset: (_) => const PasswordResetIdentityScreen(),
         AppRoutes.registerIntro: (_) => const MembershipInfoScreen(),
         AppRoutes.driverRegister: (_) => const DriverRegisterScreen(),
       },

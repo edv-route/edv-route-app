@@ -47,12 +47,6 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
     }
   }
 
-  void _showSoon(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   String? _validateId(String? value) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return 'Ingresa tu cédula.';
@@ -99,8 +93,8 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton(
-                        onPressed: () =>
-                            _showSoon('Recuperación de clave: próximamente.'),
+                        onPressed: () => Navigator.of(context)
+                            .pushNamed(AppRoutes.passwordReset),
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           foregroundColor: AppColors.primary,

@@ -8,6 +8,9 @@ abstract final class AppRoutes {
   static const String boot = '/';
   static const String selection = '/selection';
   static const String driverLogin = '/driver/login';
+  /// Recovering a forgotten password. Reachable ONLY from the login, because
+  /// that is the one screen where a driver discovers he cannot get in.
+  static const String passwordReset = '/driver/password-reset';
   /// Informational pre-screen (membership + benefits) that starts the join flow.
   static const String registerIntro = '/driver/register/info';
   static const String driverRegister = '/driver/register';
