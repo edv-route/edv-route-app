@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di.dart';
+import '../../../../core/location/location_prompt_memory.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../location/presentation/screens/location_permission_screen.dart';
 import '../../../../core/push/push_service.dart';
@@ -51,9 +52,7 @@ class _DriverShellState extends State<DriverShell> {
     // Already on duty when the app was last closed: the service may have been
     // killed since (reboot, battery manager), so it is restarted here rather
     // than waiting for him to toggle the switch off and on.
-    // Restart only if the permission is already there: on mount he is not
-    // making a decision, and a permission screen out of nowhere is intrusive.
-    if (_driver.isAvailable) _resumeTrackingIfAllowed();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onFirstLaunch());
   }
 
   @override
@@ -134,6 +133,34 @@ class _DriverShellState extends State<DriverShell> {
       await service.start();
     } catch (_) {
       // Tracking must never be what breaks the switch.
+    }
+  }
+
+  /// On launch: bring tracking back if it can run, and explain the permission
+  /// ONCE to a driver who has not granted it yet.
+  ///
+  /// Showing it on first launch means he arrives prepared instead of meeting the
+  /// prompt at the moment he wants to start working. It is shown once and
+  /// remembered, because repeating it on every open for someone who said "ahora
+  /// no" is how an app gets uninstalled — turning the switch on asks him again
+  /// anyway, and there the ask is earned.
+  Future<void> _onFirstLaunch() async {
+    if (_driver.isAvailable) await _resumeTrackingIfAllowed();
+
+    try {
+      final service = LocationService();
+      if (await service.canTrack()) return; // nothing to explain
+
+      final memory = LocationPromptMemory();
+      if (await memory.wasShown()) return;
+      await memory.markShown();
+
+      if (!mounted) return;
+      await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const LocationPermissionScreen()),
+      );
+    } catch (_) {
+      // Never let this get in the way of opening the app.
     }
   }
 
