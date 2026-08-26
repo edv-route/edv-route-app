@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di.dart';
+import '../../../../core/location/location_service.dart';
+import '../../../location/presentation/screens/location_permission_screen.dart';
 import '../../../../core/push/push_service.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../domain/entities/account_status.dart';
@@ -46,6 +48,12 @@ class _DriverShellState extends State<DriverShell> {
     // A notification tapped with the app CLOSED sets the flag before this shell
     // exists, so the tap has to be collected on mount or it is lost.
     WidgetsBinding.instance.addPostFrameCallback((_) => _onOpenRequested());
+    // Already on duty when the app was last closed: the service may have been
+    // killed since (reboot, battery manager), so it is restarted here rather
+    // than waiting for him to toggle the switch off and on.
+    // Restart only if the permission is already there: on mount he is not
+    // making a decision, and a permission screen out of nowhere is intrusive.
+    if (_driver.isAvailable) _resumeTrackingIfAllowed();
   }
 
   @override
@@ -88,7 +96,55 @@ class _DriverShellState extends State<DriverShell> {
     }
   }
 
-  void _onDriverChanged(Driver updated) => setState(() => _driver = updated);
+  void _onDriverChanged(Driver updated) {
+    final wasAvailable = _driver.isAvailable;
+    setState(() => _driver = updated);
+    // Going on duty starts reporting, going off stops it. The shell is the only
+    // place that sees this change from BOTH tabs, so putting it anywhere else
+    // would mean two copies that drift.
+    if (updated.isAvailable != wasAvailable) _syncTracking(updated.isAvailable);
+  }
+
+  /// Starts or stops location reporting to match the duty switch.
+  ///
+  /// Failing to start is SILENT for the driver: the usual cause is the
+  /// "all the time" permission not being granted, and the place to explain that
+  /// is the permission screen — not a error toast every time he goes on duty.
+  Future<void> _syncTracking(bool available) async {
+    final service = LocationService();
+    try {
+      if (!available) return service.stop();
+
+      // The permission is asked for the first time HERE, when it is first
+      // needed. Asking at login would be asking before he has any reason to
+      // say yes, and a denied prompt does not come back.
+      if (!await service.hasBackgroundPermission()) {
+        if (!mounted) return;
+        await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => const LocationPermissionScreen()),
+        );
+        // The screen starts tracking itself when it gets the permission; if it
+        // did not, he chose "ahora no" and stays on duty without reporting.
+        return;
+      }
+      await service.start();
+    } catch (_) {
+      // Tracking must never be what breaks the switch.
+    }
+  }
+
+  /// Brings tracking back on launch for a driver who was already on duty — the
+  /// service may have been killed by a reboot or a battery manager. Silent by
+  /// design: if the permission is gone, the next time he flips the switch is
+  /// when it gets explained.
+  Future<void> _resumeTrackingIfAllowed() async {
+    try {
+      final service = LocationService();
+      if (await service.hasBackgroundPermission()) await service.start();
+    } catch (_) {
+      // Never let this break the launch.
+    }
+  }
 
   /// Opens the inbox and takes the resulting count back from the pop. Refreshing
   /// the whole account here would be a second round trip for a number the screen
