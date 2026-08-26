@@ -6,14 +6,17 @@ import '../../../../shared/widgets/auth_header.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../theme/app_colors.dart';
 
-/// Asks for "location all the time", with the reason first.
+/// Asks for location before turning tracking on, with the reason first.
 ///
-/// This screen exists because of ONE Android behaviour: from Android 10 the
-/// background permission is a second, separate prompt, and from Android 11 it is
-/// not even a dialog — it drops the user into system settings to pick "Permitir
-/// todo el tiempo" by hand. Fired blind, most people deny it or get lost.
+/// The permission model, because it is easy to get backwards: **"Mientras usas
+/// la app" is enough**. A foreground service of type `location`, started while
+/// the app is open, keeps receiving positions after it is closed. "Permitir todo
+/// el tiempo" only adds surviving a reboot on its own — and since Android 11 it
+/// is not even in the dialog, only in system settings.
 ///
-/// So: say what it is for, say what he will see, and only then ask.
+/// So it is offered as an EXTRA, once tracking already works. Blocking on it
+/// would be blocking on the step most people never complete, for a benefit most
+/// of them will never notice.
 class LocationPermissionScreen extends StatefulWidget {
   const LocationPermissionScreen({super.key});
 
@@ -21,32 +24,81 @@ class LocationPermissionScreen extends StatefulWidget {
   State<LocationPermissionScreen> createState() => _LocationPermissionScreenState();
 }
 
-class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
+class _LocationPermissionScreenState extends State<LocationPermissionScreen>
+    with WidgetsBindingObserver {
   final _service = LocationService();
   bool _asking = false;
-  String? _message;
+  String? _error;
+
+  /// Tracking is on; what is left is the optional reboot-proofing.
+  bool _tracking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Coming back from system settings is not an event the screen gets told
+    // about, so the lifecycle is what tells us to re-check.
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _tracking) _refreshExtra();
+  }
+
+  Future<void> _refreshExtra() async {
+    if (await _service.hasBackgroundPermission() && mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
 
   Future<void> _ask() async {
     setState(() {
       _asking = true;
-      _message = null;
+      _error = null;
     });
 
     final permission = await _service.requestPermission();
     if (!mounted) return;
 
-    if (permission == LocationPermission.always) {
-      await _service.start();
-      if (mounted) Navigator.of(context).pop(true);
+    final granted = permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+
+    if (!granted) {
+      setState(() {
+        _asking = false;
+        _error = permission == LocationPermission.deniedForever
+            ? 'Lo bloqueaste antes. Ábrelo en Ajustes → Permisos → Ubicación.'
+            : 'Sin permiso de ubicación no podemos asignarte carreras.';
+      });
       return;
     }
 
+    final started = await _service.start();
+    if (!mounted) return;
+
+    if (!started) {
+      setState(() {
+        _asking = false;
+        _error = 'No se pudo activar. Intenta de nuevo.';
+      });
+      return;
+    }
+
+    // Already working. Whether he takes the extra step is up to him.
+    if (permission == LocationPermission.always) {
+      Navigator.of(context).pop(true);
+      return;
+    }
     setState(() {
       _asking = false;
-      _message = permission == LocationPermission.deniedForever
-          // Denied for good: no prompt will come back, only system settings.
-          ? 'Lo bloqueaste antes. Ábrelo en Ajustes → Aplicaciones → EDV Route → Permisos → Ubicación y elige "Permitir todo el tiempo".'
-          : 'Falta elegir "Permitir todo el tiempo". Sin eso solo podemos verte con la app abierta.';
+      _tracking = true;
     });
   }
 
@@ -55,84 +107,149 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
     return Scaffold(
       body: Column(
         children: [
-          const AuthHeader(
+          AuthHeader(
             showBack: true,
-            title: 'Compartir tu ubicación',
-            subtitle: 'Necesario para recibir carreras',
+            title: _tracking ? 'Ya estás compartiendo' : 'Compartir tu ubicación',
+            subtitle: _tracking ? 'Falta un detalle opcional' : 'Necesario para recibir carreras',
           ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Para asignarte las carreras que tienes cerca, la oficina necesita saber dónde estás mientras trabajas.',
-                    style: TextStyle(fontSize: 15, height: 1.5, color: AppColors.ink),
-                  ),
-                  const SizedBox(height: 24),
-                  const _Point(
-                    icon: Icons.schedule,
-                    title: 'Solo mientras estás activo',
-                    body: 'Al ponerte inactivo dejamos de recibir tu ubicación, de inmediato.',
-                  ),
-                  const SizedBox(height: 18),
-                  const _Point(
-                    icon: Icons.notifications_active_outlined,
-                    title: 'Siempre vas a saber cuándo',
-                    body:
-                        'Mientras compartes tu ubicación verás un aviso fijo de EDV Route en la barra de tu teléfono.',
-                  ),
-                  const SizedBox(height: 18),
-                  const _Point(
-                    icon: Icons.battery_std_outlined,
-                    title: 'Poco consumo',
-                    body: 'Se toma tu posición cada varios minutos, no todo el tiempo.',
-                  ),
-                  const SizedBox(height: 28),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary50,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Text(
-                      'Android te va a preguntar dos veces. En la segunda, elige "Permitir todo el tiempo": si eliges solo "mientras usas la app", dejaremos de verte en cuanto la cierres.',
-                      style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.primary900),
-                    ),
-                  ),
-                  if (_message != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      _message!,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.45,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  PrimaryButton(
-                    label: 'Permitir ubicación',
-                    loading: _asking,
-                    onPressed: _ask,
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: TextButton.styleFrom(foregroundColor: AppColors.muted),
-                    child: const Text('Ahora no'),
-                  ),
-                ],
-              ),
+              child: _tracking ? _extraStep() : _firstStep(),
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _firstStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Para asignarte las carreras que tienes cerca, la oficina necesita saber dónde estás mientras trabajas.',
+          style: TextStyle(fontSize: 15, height: 1.5, color: AppColors.ink),
+        ),
+        const SizedBox(height: 24),
+        const _Point(
+          icon: Icons.schedule,
+          title: 'Solo mientras estás activo',
+          body: 'Al ponerte inactivo dejamos de recibir tu ubicación, de inmediato.',
+        ),
+        const SizedBox(height: 18),
+        const _Point(
+          icon: Icons.notifications_active_outlined,
+          title: 'Siempre vas a saber cuándo',
+          body: 'Mientras compartes tu ubicación verás un aviso fijo de EDV Route en la barra de tu teléfono.',
+        ),
+        const SizedBox(height: 18),
+        const _Point(
+          icon: Icons.battery_std_outlined,
+          title: 'Poco consumo',
+          body: 'Se toma tu posición cada varios minutos, no todo el tiempo.',
+        ),
+        const SizedBox(height: 28),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primary50,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Text(
+            'Elige "Mientras la app está en uso". Con eso basta: seguimos recibiendo tu ubicación aunque cierres la app, mientras estés activo.',
+            style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.primary900),
+          ),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 16),
+          _ErrorText(_error!),
+        ],
+        const SizedBox(height: 24),
+        PrimaryButton(label: 'Permitir ubicación', loading: _asking, onPressed: _ask),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          style: TextButton.styleFrom(foregroundColor: AppColors.muted),
+          child: const Text('Ahora no'),
+        ),
+      ],
+    );
+  }
+
+  /// The optional extra. Framed as a bonus, never as a problem: tracking is
+  /// already running by the time this shows.
+  Widget _extraStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(color: Color(0xFFDCFCE7), shape: BoxShape.circle),
+              child: const Icon(Icons.check, size: 24, color: Color(0xFF166534)),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text(
+                'Listo, ya estamos recibiendo tu ubicación mientras estés activo.',
+                style: TextStyle(fontSize: 15, height: 1.4, color: AppColors.ink),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 28),
+        const Text(
+          'Un detalle opcional',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Si reinicias el teléfono, tendrás que abrir la app para seguir compartiendo. Para que se reanude solo, elige "Permitir todo el tiempo" en los ajustes.',
+          style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.muted),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Text(
+            'Ajustes → Permisos → Ubicación → Permitir todo el tiempo.\n\nAndroid ya no ofrece esa opción en la ventana de permisos: solo se puede elegir ahí.',
+            style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.ink),
+          ),
+        ),
+        const SizedBox(height: 24),
+        PrimaryButton(label: 'Abrir ajustes', onPressed: _service.openSettings),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          child: const Text('Así está bien'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ErrorText extends StatelessWidget {
+  const _ErrorText(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Text(
+        message,
+        style: const TextStyle(
+          fontSize: 13,
+          height: 1.45,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
+      );
 }
 
 class _Point extends StatelessWidget {

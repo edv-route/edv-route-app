@@ -21,34 +21,48 @@ class LocationService {
 
   bool _initialised = false;
 
-  /// Whether "location all the time" was granted. Android 10+ asks for it in a
-  /// SECOND prompt that sends the user into system settings, and it is the step
-  /// most people fall out of — which is why it gets its own screen with an
-  /// explanation instead of being fired blind.
-  Future<bool> hasBackgroundPermission() async {
+  /// Enough to track: "while using the app" DOES cover it.
+  ///
+  /// This is the part that is easy to get wrong. A foreground service of type
+  /// `location`, STARTED while the app is in the foreground, counts as
+  /// "while-in-use" and keeps receiving positions after the app is closed —
+  /// no "all the time" permission involved.
+  ///
+  /// ACCESS_BACKGROUND_LOCATION only buys one thing here: STARTING the service
+  /// from the background, which in practice means reviving it after a reboot
+  /// without the driver opening the app. Nice to have, not required — and
+  /// Android 11+ does not even offer it in the dialog, only buried in settings.
+  Future<bool> canTrack() async {
     if (!Platform.isAndroid) return false;
     final permission = await Geolocator.checkPermission();
-    return permission == LocationPermission.always;
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
   }
 
-  /// Asks for location, then for the background variant. Returns what it got.
+  /// Whether tracking also survives a reboot on its own.
+  Future<bool> hasBackgroundPermission() async {
+    if (!Platform.isAndroid) return false;
+    return await Geolocator.checkPermission() == LocationPermission.always;
+  }
+
+  /// Asks for location. One prompt — the one Android actually shows.
   Future<LocationPermission> requestPermission() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       // The phone's location is switched off entirely: no prompt will fix that.
       return LocationPermission.denied;
     }
 
-    var permission = await Geolocator.checkPermission();
+    final permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.whileInUse) {
-      // Second prompt. On Android 11+ this opens system settings rather than a
-      // dialog, so the caller must be ready for the user to come back later.
-      permission = await Geolocator.requestPermission();
+      return Geolocator.requestPermission();
     }
     return permission;
   }
+
+  /// Opens this app's settings page, the ONLY place Android 11+ lets someone
+  /// pick "Permitir todo el tiempo". Offered as an optional extra, never as a
+  /// gate: without it tracking still works, it just does not survive a reboot.
+  Future<void> openSettings() => Geolocator.openAppSettings();
 
   void _init() {
     if (_initialised) return;
@@ -71,8 +85,9 @@ class LocationService {
         // Server-configured; this is only the value used until the first reply
         // comes back with the real one.
         eventAction: ForegroundTaskEventAction.repeat(600 * 1000),
-        // Back up after a reboot or an app update: a driver who restarts his
-        // phone mid-shift should not vanish off the map until he notices.
+        // Only actually fires for drivers who granted "all the time": starting
+        // a location service from the background needs it. Harmless otherwise —
+        // Android refuses the start and the app restarts tracking on next open.
         autoRunOnBoot: true,
         autoRunOnMyPackageReplaced: true,
         allowWakeLock: true,
@@ -86,7 +101,7 @@ class LocationService {
   /// Starts tracking. Safe to call when already running.
   Future<bool> start() async {
     if (!Platform.isAndroid) return false;
-    if (!await hasBackgroundPermission()) return false;
+    if (!await canTrack()) return false;
 
     _init();
     if (await FlutterForegroundTask.isRunningService) return true;

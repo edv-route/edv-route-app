@@ -115,10 +115,14 @@ class _DriverShellState extends State<DriverShell> {
     try {
       if (!available) return service.stop();
 
-      // The permission is asked for the first time HERE, when it is first
-      // needed. Asking at login would be asking before he has any reason to
-      // say yes, and a denied prompt does not come back.
-      if (!await service.hasBackgroundPermission()) {
+      // Asked for the first time HERE, when it is first needed. Asking at login
+      // would be asking before he has any reason to say yes, and a denied prompt
+      // does not come back.
+      //
+      // `canTrack`, NOT the background permission: a foreground service started
+      // while the app is open keeps reporting after it closes. Demanding
+      // "todo el tiempo" would block on a step Android 11+ hides in settings.
+      if (!await service.canTrack()) {
         if (!mounted) return;
         await Navigator.of(context).push<bool>(
           MaterialPageRoute(builder: (_) => const LocationPermissionScreen()),
@@ -140,7 +144,7 @@ class _DriverShellState extends State<DriverShell> {
   Future<void> _resumeTrackingIfAllowed() async {
     try {
       final service = LocationService();
-      if (await service.hasBackgroundPermission()) await service.start();
+      if (await service.canTrack()) await service.start();
     } catch (_) {
       // Never let this break the launch.
     }
