@@ -144,12 +144,33 @@ class _InfoScreenState extends State<InfoScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.card_giftcard_outlined, size: 20, color: AppColors.primary),
+            const Padding(
+              padding: EdgeInsets.only(top: 1),
+              child: Icon(Icons.card_giftcard_outlined, size: 20, color: AppColors.primary),
+            ),
             const SizedBox(width: 10),
-            Text(
-              membership == null ? 'Beneficios' : 'Beneficios de ${membership.name}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+            // The membership name goes UNDER the heading, not inside it: names
+            // like "Membresía Profesionales del Volante" turned the title into
+            // a line that ran off the screen.
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Beneficios',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                  ),
+                  if (membership != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      membership.name,
+                      style: const TextStyle(fontSize: 13, height: 1.3, color: AppColors.muted),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         ),
@@ -215,12 +236,18 @@ class _InfoScreenState extends State<InfoScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 20, color: AppColors.primary),
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(icon, size: 20, color: AppColors.primary),
+            ),
             const SizedBox(width: 10),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+              ),
             ),
           ],
         ),
