@@ -1,9 +1,9 @@
 # EDV Route Mobile — Handoff (feature: registro de chofer)
 
-> ⚠️ **ESTADO ACTUAL → [HANDOFF-2026-08-10.md](HANDOFF-2026-08-10.md).** El registro ya está
-> IMPLEMENTADO y el backend DESPLEGADO (flujo `enroll` con semanas adelantadas + resumen de cobro;
-> APK release compilado). **Todo lo de abajo es el plan histórico (2026-08-03)**: sirve como
-> referencia de arquitectura/gotchas, pero el "estado" y los "próximos pasos" ya están superados.
+> ⚠️ **ESTADO ACTUAL → [HANDOFF-2026-08-31-app-cliente.md](HANDOFF-2026-08-31-app-cliente.md)**
+> (la app del pasajero completa y rediseñada). **Todo lo de abajo es el plan histórico
+> (2026-08-03)**: sirve como referencia de arquitectura/gotchas, pero el "estado" y los
+> "próximos pasos" ya están superados.
 
 > Documento de continuidad. Léelo completo antes de seguir. Fecha: 2026-08-03.
 > Proyecto: `C:\Project\edv\edv-route-mobile` (Flutter + Dart, Material 3).

@@ -4,11 +4,13 @@ import '../../../../../core/config/app_build.dart';
 import '../../../../../core/di.dart';
 import '../../../../../core/network/api_exception.dart';
 import '../../../../../core/utils/date_format.dart';
+import '../../../../../core/utils/initials.dart';
 import '../../../../../domain/entities/client.dart';
 import '../../../../../shared/actions/logout_action.dart';
 import '../../../../../shared/widgets/gradient_header.dart';
 import '../../../../../shared/widgets/media_picker.dart';
 import '../../../../../theme/app_colors.dart';
+import './client_change_password_screen.dart';
 import './client_edit_profile_screen.dart';
 
 /// Passenger profile tab: identity + photo in the header, his data in a card,
@@ -35,16 +37,22 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final _repository = Dependencies.instance.clientAuthRepository;
   bool _photoBusy = false;
 
-  Future<void> _openEdit({bool changePassword = false}) async {
+  Future<void> _openEdit() async {
     final updated = await Navigator.of(context).push<Client>(
       MaterialPageRoute(
-        builder: (_) => ClientEditProfileScreen(
-          client: widget.client,
-          openPasswordSection: changePassword,
-        ),
+        builder: (_) => ClientEditProfileScreen(client: widget.client),
       ),
     );
     if (updated != null && mounted) widget.onClientChanged(updated);
+  }
+
+  /// The password lives on its OWN screen (decision by Luis, 2026-08-31):
+  /// editing who you are and changing your key are different errands.
+  Future<void> _openChangePassword() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const ClientChangePasswordScreen()),
+    );
+    if (changed == true && mounted) _snack('Tu clave fue actualizada.');
   }
 
   /// Picks a photo and replaces the profile one. The backend answers with the
@@ -178,7 +186,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       backgroundColor: AppColors.gold,
       foregroundImage: client.photoUrl != null ? NetworkImage(client.photoUrl!) : null,
       child: Text(
-        _initials(client),
+        initialsOf(client.fullName),
         style: const TextStyle(
           color: AppColors.primary950,
           fontWeight: FontWeight.w800,
@@ -213,12 +221,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         ],
       ),
     );
-  }
-
-  String _initials(Client client) {
-    final parts = client.fullName.trim().split(RegExp(r'\s+'));
-    final letters = parts.take(2).map((p) => p.isEmpty ? '' : p[0]).join();
-    return letters.isEmpty ? '?' : letters.toUpperCase();
   }
 
   Widget _sectionLabel(String text) => Text(
@@ -294,7 +296,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           _actionRow(
             icon: Icons.lock_outline,
             label: 'Cambiar mi clave',
-            onTap: () => _openEdit(changePassword: true),
+            onTap: _openChangePassword,
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
           _actionRow(

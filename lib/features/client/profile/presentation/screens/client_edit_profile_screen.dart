@@ -2,32 +2,28 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/di.dart';
 import '../../../../../core/network/api_exception.dart';
+import '../../../../../core/utils/initials.dart';
 import '../../../../../domain/entities/client.dart';
 import '../../../../../shared/validators/person_validators.dart';
 import '../../../../../shared/widgets/brand_text_field.dart';
 import '../../../../../shared/widgets/gradient_header.dart';
 import '../../../../../shared/widgets/operator_phone_field.dart';
-import '../../../../../shared/widgets/password_field.dart';
 import '../../../../../shared/widgets/registration_fields.dart';
 import '../../../../../theme/app_colors.dart';
 
-/// Self-service edit of the passenger's own data. Unlike the affiliate's, the
-/// NAMES are editable here: a client has no office-verified identity behind
-/// his account, so there is nothing to protect them with. Changing the
-/// password requires the current one (backend rule).
+/// Self-service edit of the passenger's own data — and ONLY his data. Unlike
+/// the affiliate's, the NAMES are editable here: a client has no
+/// office-verified identity behind his account, so there is nothing to
+/// protect them with. The password has its own screen
+/// ([ClientChangePasswordScreen], decision by Luis 2026-08-31): editing who
+/// you are and changing your key are different errands, and mixing them made
+/// both forms longer.
 ///
 /// Pops with the updated [Client] so the profile repaints without re-login.
 class ClientEditProfileScreen extends StatefulWidget {
   final Client client;
 
-  /// Opens the "Cambiar mi clave" section unfolded (the profile's shortcut).
-  final bool openPasswordSection;
-
-  const ClientEditProfileScreen({
-    super.key,
-    required this.client,
-    this.openPasswordSection = false,
-  });
+  const ClientEditProfileScreen({super.key, required this.client});
 
   @override
   State<ClientEditProfileScreen> createState() => _ClientEditProfileScreenState();
@@ -51,11 +47,7 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
       TextEditingController(text: widget.client.email ?? '');
   late final TextEditingController _address =
       TextEditingController(text: widget.client.address ?? '');
-  final _currentPassword = TextEditingController();
-  final _password = TextEditingController();
-  final _passwordConfirm = TextEditingController();
 
-  late bool _changingPassword = widget.openPasswordSection;
   bool _saving = false;
   String? _error;
 
@@ -76,9 +68,6 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
     _phoneNumber.dispose();
     _email.dispose();
     _address.dispose();
-    _currentPassword.dispose();
-    _password.dispose();
-    _passwordConfirm.dispose();
     super.dispose();
   }
 
@@ -96,11 +85,6 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
     return (kPhoneOperators.first.code, '');
   }
 
-  String? _validateNewPassword(String? v) {
-    if (!_changingPassword) return null;
-    return validateNewPassword(v);
-  }
-
   Future<void> _save() async {
     setState(() => _error = null);
     if (!_formKey.currentState!.validate()) return;
@@ -116,8 +100,6 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
         phone: local.isEmpty ? '' : '+58$_phoneOperator$local',
         email: _email.text.trim(),
         address: _address.text.trim(),
-        password: _changingPassword ? _password.text : null,
-        currentPassword: _changingPassword ? _currentPassword.text : null,
       );
       if (!mounted) return;
       Navigator.of(context).pop(updated);
@@ -134,28 +116,61 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
     return Scaffold(
       body: Column(
         children: [
+          // Logo + avatar in the header (asked by Luis, 2026-08-31): a bare
+          // back-arrow-and-title bar read as unfinished next to the rest.
           GradientHeader(
             height: GradientHeader.kStandardHeight,
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 20, 14),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    const Text(
-                      'Editar mis datos',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 20, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
                       ),
+                      const Image(
+                        image: AssetImage('assets/images/edv_logo_gold.png'),
+                        height: 26,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: AppColors.gold,
+                          foregroundImage: widget.client.photoUrl != null
+                              ? NetworkImage(widget.client.photoUrl!)
+                              : null,
+                          child: Text(
+                            initialsOf(widget.client.fullName),
+                            style: const TextStyle(
+                              color: AppColors.primary950,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Editar mis datos',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -195,8 +210,6 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
                     controller: _address,
                     hintText: 'Tu dirección',
                   ),
-                  const SizedBox(height: 20),
-                  _passwordSection(),
                   const SizedBox(height: 22),
                   // The error sits NEXT TO the button, not at the top: that is
                   // where he is looking when the save fails.
@@ -255,59 +268,4 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
     );
   }
 
-  Widget _passwordSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          onTap: () => setState(() => _changingPassword = !_changingPassword),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
-              children: [
-                Icon(
-                  _changingPassword ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 4),
-                const Text(
-                  'Cambiar mi clave',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (_changingPassword) ...[
-          const SizedBox(height: 10),
-          PasswordField(
-            label: 'Clave actual',
-            controller: _currentPassword,
-            textInputAction: TextInputAction.next,
-            validator: (v) =>
-                !_changingPassword || (v ?? '').isNotEmpty ? null : 'Escribe tu clave actual.',
-          ),
-          const SizedBox(height: 14),
-          PasswordField(
-            label: 'Nueva clave',
-            controller: _password,
-            textInputAction: TextInputAction.next,
-            validator: _validateNewPassword,
-          ),
-          const SizedBox(height: 14),
-          PasswordField(
-            label: 'Repite la nueva clave',
-            controller: _passwordConfirm,
-            validator: (v) => !_changingPassword
-                ? null
-                : ((v ?? '') != _password.text ? 'Las claves no coinciden.' : null),
-          ),
-        ],
-      ],
-    );
-  }
 }
