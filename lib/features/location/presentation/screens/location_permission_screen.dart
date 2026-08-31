@@ -102,6 +102,28 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen>
     });
   }
 
+  /// Sends the driver to the location permission screen in one tap.
+  ///
+  /// Asking for the background permission is what opens it (Android 11+
+  /// moved "Permitir todo el tiempo" out of the dialog and into settings).
+  /// If the request resolves without granting it — already denied for good,
+  /// or a phone that behaves differently — we fall back to the app settings
+  /// page, which is where this used to send everyone.
+  Future<void> _openBackgroundSettings() async {
+    final granted = await _service.requestBackgroundPermission();
+    if (!mounted) return;
+    if (granted) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+    if (await _service.hasBackgroundPermission()) {
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+      return;
+    }
+    await _service.openSettings();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -223,7 +245,7 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen>
           ),
         ),
         const SizedBox(height: 24),
-        PrimaryButton(label: 'Abrir ajustes', onPressed: _service.openSettings),
+        PrimaryButton(label: 'Abrir ajustes', onPressed: _openBackgroundSettings),
         const SizedBox(height: 8),
         TextButton(
           onPressed: () => Navigator.of(context).pop(true),

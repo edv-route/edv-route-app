@@ -59,9 +59,30 @@ class LocationService {
     return permission;
   }
 
-  /// Opens this app's settings page, the ONLY place Android 11+ lets someone
-  /// pick "Permitir todo el tiempo". Offered as an optional extra, never as a
-  /// gate: without it tracking still works, it just does not survive a reboot.
+  /// Takes the driver straight to the "Permiso de Ubicación" screen.
+  ///
+  /// Android does NOT let an app open that screen with an intent: the
+  /// activity behind it is guarded by GRANT_RUNTIME_PERMISSIONS, a
+  /// system-signature permission. The supported way in is to REQUEST the
+  /// background permission — from Android 11 the system stops showing an
+  /// "Allow all the time" option in the dialog and sends the user to that
+  /// settings page instead. So this is a permission request that happens to
+  /// land where we want, not a navigation.
+  ///
+  /// Only meaningful once "while in use" is already granted: geolocator adds
+  /// ACCESS_BACKGROUND_LOCATION to the request exactly in that case.
+  Future<bool> requestBackgroundPermission() async {
+    if (!Platform.isAndroid) return false;
+    if (await Geolocator.checkPermission() != LocationPermission.whileInUse) {
+      return false;
+    }
+    final result = await Geolocator.requestPermission();
+    return result == LocationPermission.always;
+  }
+
+  /// Opens this app's settings page. The fallback: on a phone where the
+  /// request above leads nowhere (already denied for good, or a launcher
+  /// that skips the screen), the driver still gets somewhere useful.
   Future<void> openSettings() => Geolocator.openAppSettings();
 
   void _init() {
