@@ -17,11 +17,7 @@ pendiente de que Luis confirme en el teléfono.
 |---|---|---|---|
 | `edv-route-backend` | `dev` | `09bfc1c` | **Empujado y DESPLEGADO en Railway** (verificado contra producción) |
 | `edv-route-admin` | `dev` | `8c51ffc` | Sin tocar esta sesión |
-| `edv-route-mobile` | `main` | `e0a6653` | Empujado (C-b a C-d)… **⚠️ y TODO lo posterior SIN commitear** |
-
-⚠️ **Lo sin commitear en la app** (APKs 26 al 30): la separación editar/clave, los headers con
-logo+avatar de las subpantallas del perfil, y el rediseño completo del inicio. Un `git status`
-lo lista; se guarda con el próximo `!SAVE`/`!PUSH` cuando Luis dé el visto bueno al APK 30.
+| `edv-route-mobile` | `main` | `9d88279` | **Empujado**: `e0a6653` (C-b a C-d) + `9d88279` (rediseño del inicio y perfil, APK 30) |
 
 ## 2. Fases C-b y C-c — la app del pasajero (commit `e0a6653`, APK 25)
 
@@ -61,14 +57,14 @@ sus textos. Suite de la app: 88/88.
 ⚠️ Un afiliado-que-es-cliente comparte **LA clave** (una fila en `users`): recuperarla por
 cualquier canal la cambia para ambos lados.
 
-## 4. Ajustes tras la prueba en el teléfono (APK 26, sin commitear)
+## 4. Ajustes tras la prueba en el teléfono (APK 26)
 
 Decisión de Luis: **editar el perfil y cambiar la clave son mandados distintos**.
 - «Editar» → solo datos (nombres, teléfono, correo, dirección).
 - «Cambiar mi clave» → pantalla propia (`client_change_password_screen.dart`) con clave
   actual + nueva + repetir, y confirmación al volver.
 
-## 5. El rediseño del inicio (APKs 27→30, sin commitear)
+## 5. El rediseño del inicio (APKs 27→30)
 
 La historia completa, porque explica el resultado:
 
@@ -108,12 +104,11 @@ subió el número justamente para esto.
 ## 6. Pendiente
 
 1. **Luis confirma el APK 30 en el teléfono** (el 29 le disgustó el header; el 30 lo corrige).
-2. **Commitear y empujar la app** (`!SAVE`/`!PUSH`): APKs 26–30 son trabajo local.
-3. **Panel de clientes** (ver/buscar/suspender): hoy un cliente problemático solo se para a
+2. **Panel de clientes** (ver/buscar/suspender): hoy un cliente problemático solo se para a
    mano en la BD.
-4. **Módulo de Viajes** — sigue bloqueado por producto. El diseño del inicio ya le dejó el
+3. **Módulo de Viajes** — sigue bloqueado por producto. El diseño del inicio ya le dejó el
    sitio (el mapa) y el patrón.
-5. Los pendientes heredados: tres archivos de +1000 líneas, pruebas del panel, Supabase de
+4. Los pendientes heredados: tres archivos de +1000 líneas, pruebas del panel, Supabase de
    producción separado.
 
 ## 7. Preguntas abiertas
@@ -139,10 +134,10 @@ subió el número justamente para esto.
 > **La app del pasajero está COMPLETA** (C-b a C-d): entrar con correo o teléfono (normalizado
 > a E.164), registro sin cédula, perfil con foto, cambiar clave en pantalla propia y
 > recuperación por correo (misma maquinaria del chofer, identidad = correo solo, acotada a
-> `clients`). Backend `09bfc1c` en `dev` DESPLEGADO y verificado; app `e0a6653` en `main` —
-> **⚠️ todo lo posterior (APKs 26–30: separación editar/clave, headers, y el rediseño del
-> inicio con mapa ilustrado + tarjeta dorada arriba + escudo de confianza) está SIN
-> commitear**. APK vigente 1.0.0 (30), pendiente de visto bueno de Luis (ojo: verificar el
+> `clients`). Backend `09bfc1c` en `dev` DESPLEGADO y verificado; app en `main` con `e0a6653`
+> (C-b a C-d) y `9d88279` (rediseño del inicio: mapa ilustrado + tarjeta dorada arriba +
+> escudo de confianza; editar/clave separados; headers con logo y avatar), ambos empujados.
+> APK vigente 1.0.0 (30), pendiente de visto bueno de Luis (ojo: verificar el
 > build en el pie del Perfil — reinstalar una copia vieja del APK es el gotcha de la sesión).
 > El diseño aprobado vive en el canvas «Inicio del pasajero». Siguen pendientes el panel de
 > clientes y el módulo de Viajes.
