@@ -35,12 +35,17 @@ class DriverHeader extends StatelessWidget {
   /// that fetched it on its own would show two different bells.
   final int unreadNotifications;
 
+  /// Opens the information screen: benefits, tariff rules, what is expected of
+  /// him. Null hides the icon (screens outside the shell).
+  final VoidCallback? onInfoTap;
+
   /// Opens the inbox. Null hides the bell entirely (screens outside the shell).
   final VoidCallback? onNotificationsTap;
 
   const DriverHeader({
     super.key,
     required this.driver,
+    this.onInfoTap,
     required this.available,
     this.onAvailabilityChanged,
     this.savingAvailability = false,
@@ -205,9 +210,7 @@ class DriverHeader extends StatelessWidget {
   Widget _dutyStrip() {
     final label = available ? 'Activo' : 'Inactivo';
     final dot = available ? const Color(0xFF22C55E) : const Color(0xFFF97316);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
+    final pill = Container(
         padding: const EdgeInsets.fromLTRB(12, 2, 6, 2),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.12),
@@ -256,7 +259,29 @@ class DriverHeader extends StatelessWidget {
             ),
           ],
         ),
-      ),
+    );
+
+    if (onInfoTap == null) return Align(alignment: Alignment.centerLeft, child: pill);
+
+    // Pill on the left, information on the right: the icon sits at the bottom
+    // edge of the header, away from the bell, so the two never read as a pair.
+    return Row(
+      children: [
+        pill,
+        const Spacer(),
+        InkWell(
+          onTap: onInfoTap,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(
+              Icons.info_outline,
+              size: 22,
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

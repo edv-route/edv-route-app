@@ -6,6 +6,7 @@ import '../../../../shared/widgets/driver_header.dart';
 import '../../../../domain/entities/driver.dart';
 import '../../../../theme/app_colors.dart';
 import '../widgets/dashboard_tile.dart';
+import '../../../info/presentation/screens/info_screen.dart';
 import '../../../profile/presentation/availability_action.dart';
 
 /// Driver home tab — intentionally simple for now: a greeting, an availability
@@ -61,6 +62,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) setState(() => _savingAvailability = false);
   }
 
+  /// Opens the information screen, handing it the arrears tolerance the
+  /// account already reported: the screen must not hardcode a number that
+  /// the office can change.
+  void _openInfo() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => InfoScreen(capWeeks: _account?.capWeeks)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Header pinned OUTSIDE the scroll, like Perfil: otherwise it slides under
@@ -74,6 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onAvailabilityChanged: _savingAvailability ? null : _setAvailability,
           unreadNotifications: widget.unreadNotifications,
           onNotificationsTap: widget.onNotificationsTap,
+          onInfoTap: _openInfo,
         ),
         Expanded(
           child: ListView(
@@ -96,13 +107,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // the bell in the header opens the real inbox now, and a tile that
               // announces as future something the driver can already see two
               // centimetres above it is worse than no tile at all.
-              const SizedBox(height: 12),
-              DashboardTile(
-                icon: Icons.card_giftcard_outlined,
-                title: 'Beneficios',
-                subtitle: 'Ventajas por ser parte de EDV',
-                onTap: () => _soon('Beneficios: próximamente.'),
-              ),
+              //
+              // "Beneficios" went the same way (2026-08-31): it promised one
+              // third of what a driver needs to know and delivered a
+              // "próximamente". The benefits now open from the information icon
+              // in the header, alongside the tariff rules and what is expected
+              // of him — the questions he actually has, answered together.
             ],
           ),
         ),
