@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -15,6 +16,10 @@ class LocationService {
   LocationService({LocationQueue? queue}) : _queue = queue ?? LocationQueue();
 
   final LocationQueue _queue;
+
+  /// Native side, for the one thing no package does right (see
+  /// requestBackgroundPermission).
+  static const MethodChannel _permissions = MethodChannel('edvroute/permissions');
 
   static const int _serviceId = 512;
   static const String _channelId = 'edv_ubicacion';
@@ -69,15 +74,29 @@ class LocationService {
   /// settings page instead. So this is a permission request that happens to
   /// land where we want, not a navigation.
   ///
-  /// Only meaningful once "while in use" is already granted: geolocator adds
-  /// ACCESS_BACKGROUND_LOCATION to the request exactly in that case.
+  /// ⚠️ NOT through geolocator, and this is the whole point. Android:
+  /// "If you request a foreground location permission and the background
+  ///  location permission at the same time, the system ignores the request
+  ///  and doesn't grant your app either permission."
+  /// geolocator builds its request from the manifest (which holds the
+  /// foreground permissions) and appends the background one to that same
+  /// list, so the request is ignored and NOTHING happens on screen. The
+  /// native channel asks for it alone, which is what opens the settings page.
+  ///
+  /// Only meaningful once "while in use" is already granted.
   Future<bool> requestBackgroundPermission() async {
     if (!Platform.isAndroid) return false;
     if (await Geolocator.checkPermission() != LocationPermission.whileInUse) {
       return false;
     }
-    final result = await Geolocator.requestPermission();
-    return result == LocationPermission.always;
+    try {
+      return await _permissions.invokeMethod<bool>('requestBackgroundLocation') ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      // An older shell without the channel: the caller falls back to settings.
+      return false;
+    }
   }
 
   /// Opens this app's settings page. The fallback: on a phone where the
