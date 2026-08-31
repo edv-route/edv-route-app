@@ -171,6 +171,14 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen>
           title: 'Poco consumo',
           body: 'Se toma tu posición cada varios minutos, no todo el tiempo.',
         ),
+        const SizedBox(height: 18),
+        // Deliberately worded not to overclaim: the foreground service DOES
+        // keep reporting with the app closed. What suffers is immediacy.
+        const _Point(
+          icon: Icons.phone_android,
+          title: 'Durante un viaje, deja la app abierta',
+          body: 'Con la app cerrada seguimos recibiendo tu ubicación, pero un viaje nuevo puede tardar en avisarte. Mientras trabajas, tenla abierta.',
+        ),
         const SizedBox(height: 28),
         Container(
           padding: const EdgeInsets.all(16),

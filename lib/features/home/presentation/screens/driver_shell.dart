@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di.dart';
-import '../../../../core/location/location_prompt_memory.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../location/presentation/screens/location_permission_screen.dart';
 import '../../../../core/push/push_service.dart';
@@ -137,23 +136,20 @@ class _DriverShellState extends State<DriverShell> {
   }
 
   /// On launch: bring tracking back if it can run, and explain the permission
-  /// ONCE to a driver who has not granted it yet.
+  /// to a driver who has not granted it yet.
   ///
-  /// Showing it on first launch means he arrives prepared instead of meeting the
-  /// prompt at the moment he wants to start working. It is shown once and
-  /// remembered, because repeating it on every open for someone who said "ahora
-  /// no" is how an app gets uninstalled — turning the switch on asks him again
-  /// anyway, and there the ask is earned.
+  /// Shown on EVERY launch while the permission is missing (decision by Luis,
+  /// 2026-08-28). It used to be shown once and remembered, to avoid nagging.
+  /// The trade was reconsidered: without location the app cannot do the one
+  /// thing it is for — putting him in line for the trips near him — so a
+  /// driver who dismissed it once would keep losing work without knowing why.
+  /// It is still dismissable ("Ahora no"), never a wall.
   Future<void> _onFirstLaunch() async {
     if (_driver.isAvailable) await _resumeTrackingIfAllowed();
 
     try {
       final service = LocationService();
       if (await service.canTrack()) return; // nothing to explain
-
-      final memory = LocationPromptMemory();
-      if (await memory.wasShown()) return;
-      await memory.markShown();
 
       if (!mounted) return;
       await Navigator.of(context).push<bool>(

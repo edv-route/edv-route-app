@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/di.dart';
-import '../../core/location/location_prompt_memory.dart';
 import '../../core/location/location_service.dart';
 import '../../core/push/push_service.dart';
 import '../../routing/app_routes.dart';
@@ -37,9 +36,6 @@ Future<void> performLogout(BuildContext context) async {
   // session that no longer exists, and the queue would hand the next driver on
   // this phone the previous one's positions.
   await LocationService().stopAndClear();
-  // The next driver on this phone deserves the explanation too, not a silent
-  // "you already saw this" from somebody else's session.
-  await LocationPromptMemory().clear();
   await Dependencies.instance.authRepository.logout();
   if (context.mounted) {
     Navigator.of(context).pushNamedAndRemoveUntil(
