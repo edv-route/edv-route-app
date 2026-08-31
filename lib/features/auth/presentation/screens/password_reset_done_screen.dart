@@ -5,14 +5,23 @@ import '../../../../shared/widgets/auth_header.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../theme/app_colors.dart';
 
-/// The end of the recovery. Its only job is to say the change stuck and put the
-/// driver back at the login — the flow he came here to finish.
+/// The end of the recovery. Its only job is to say the change stuck and put
+/// the user back at the login — the flow they came here to finish. Shared by
+/// both channels; the defaults speak driver.
 ///
-/// It does NOT promise that other phones were signed out: driver sessions are
-/// validated by signature alone and stay alive up to 8h, so saying otherwise
-/// would be the app telling him something that is not true.
+/// It does NOT promise that other phones were signed out: sessions are
+/// validated by signature alone, so saying otherwise would be the app telling
+/// the user something that is not true.
 class PasswordResetDoneScreen extends StatelessWidget {
-  const PasswordResetDoneScreen({super.key});
+  const PasswordResetDoneScreen({super.key, this.loginRoute = AppRoutes.driverLogin, String? message})
+      : message = message ??
+            'Ya puedes entrar con tu cédula y tu clave nueva. Te enviamos un correo confirmando el cambio.';
+
+  /// The named login route to land back on.
+  final String loginRoute;
+
+  /// How this channel signs in from now on.
+  final String message;
 
   /// The "Aprobado" green the checklist already uses.
   static const _okBg = Color(0xFFDCFCE7);
@@ -49,10 +58,10 @@ class PasswordResetDoneScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Ya puedes entrar con tu cédula y tu clave nueva. Te enviamos un correo confirmando el cambio.',
+                  Text(
+                    message,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.muted),
+                    style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.muted),
                   ),
                   const SizedBox(height: 36),
                   SizedBox(
@@ -62,7 +71,7 @@ class PasswordResetDoneScreen extends StatelessWidget {
                       // Back to the login that started this, not a new one on
                       // top of it: the recovery screens must not stay behind.
                       onPressed: () => Navigator.of(context)
-                          .popUntil(ModalRoute.withName(AppRoutes.driverLogin)),
+                          .popUntil(ModalRoute.withName(loginRoute)),
                     ),
                   ),
                 ],

@@ -1,7 +1,9 @@
-# EDV Route — App del chofer
+# EDV Route — App móvil
 
-App Flutter del afiliado (chofer). Habla **solo** con el backend propio
-(`edv-route-backend`); nunca toca la base de datos ni el bucket de archivos.
+App Flutter con **dos modos**: el del afiliado (chofer) y el del cliente
+(pasajero), separados por carpeta dentro de `features/`. Habla **solo** con el
+backend propio (`edv-route-backend`); nunca toca la base de datos ni el bucket
+de archivos.
 
 ## Estructura
 
@@ -16,12 +18,17 @@ lib/
   domain/       Entidades y contratos de repositorio. Sin Flutter, sin HTTP.
   data/         Implementación: datasources (HTTP), modelos (JSON) y repositorios.
   features/
-    auth/       Entrar: selección de perfil, login, registro, splash.
+    auth/       Entrar: selección de perfil, login/registro del chofer, splash.
     enrollment/ La solicitud: checklist, documentos, vehículos, pago del alta,
                 membresía.
     profile/    Perfil del afiliado: estado de cuenta, editar datos, foto.
-    home/       Lo que envuelve: shell con la barra inferior, enrutado por
-                estado y pantalla de estado.
+    home/       Lo que envuelve al chofer: shell con la isla inferior, enrutado
+                por estado y pantalla de estado.
+    client/     El modo pasajero completo, con el mismo corte interno:
+      auth/     Entrar (correo o teléfono) y crear cuenta.
+      home/     Shell del cliente e inicio de maqueta (marcado como vista previa).
+      trips/    Pestaña Viajes: aviso honesto de "aún no", hasta que exista.
+      profile/  Perfil del cliente: datos, foto y edición.
   shared/       Lo que usa más de una sección: widgets (avatar de foto, selector
                 de imagen, campos de formulario, tarjetas del checklist) y
                 acciones (cerrar sesión).

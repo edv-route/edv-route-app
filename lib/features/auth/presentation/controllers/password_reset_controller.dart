@@ -7,10 +7,14 @@ import '../../../../domain/repositories/password_reset_repository.dart';
 
 /// Owns the whole recovery flow — the three screens share ONE controller.
 ///
-/// Splitting it per screen would mean threading the cédula, the email and the
-/// reset token through three constructors, and every one of those hand-offs is
-/// a chance for the code screen and the password screen to disagree about whose
+/// Splitting it per screen would mean threading the identity and the reset
+/// token through three constructors, and every one of those hand-offs is a
+/// chance for the code screen and the password screen to disagree about whose
 /// account is being recovered. Here that answer exists once.
+///
+/// Channel-agnostic: the repository it receives (driver or client) decides
+/// which endpoints answer, and the identity screen of each channel decides
+/// what a [ResetIdentity] carries.
 class PasswordResetController extends ChangeNotifier {
   PasswordResetController(this._repository);
 
@@ -24,8 +28,7 @@ class PasswordResetController extends ChangeNotifier {
   /// "Reenviar" for the same span instead of letting him earn an error.
   static const Duration resendCooldown = Duration(seconds: 60);
 
-  String _nationalId = '';
-  String _email = '';
+  ResetIdentity? _identity;
   String? _resetToken;
 
   bool _loading = false;
@@ -37,7 +40,9 @@ class PasswordResetController extends ChangeNotifier {
 
   bool get loading => _loading;
   String? get error => _error;
-  String get email => _email;
+
+  /// Where the code went — shown back so a typo can be caught early.
+  String get email => _identity?.email ?? '';
 
   /// Time left before the code dies. Drives the "Vence en 9:32" line.
   Duration get remaining => _remaining;
@@ -47,13 +52,12 @@ class PasswordResetController extends ChangeNotifier {
 
   bool get expired => _remaining <= Duration.zero;
 
-  /// Step 1. Keeps the pair on success so the later steps never re-ask for it.
-  Future<bool> requestCode({required String nationalId, required String email}) async {
+  /// Step 1. Keeps the identity on success so the later steps never re-ask.
+  Future<bool> requestCode(ResetIdentity identity) async {
     _begin();
     try {
-      await _repository.requestCode(nationalId: nationalId, email: email);
-      _nationalId = nationalId;
-      _email = email;
+      await _repository.requestCode(identity);
+      _identity = identity;
       _startCountdown();
       _done();
       return true;
@@ -65,20 +69,23 @@ class PasswordResetController extends ChangeNotifier {
 
   /// Asks for another code for the same account. Restarts both clocks.
   Future<bool> resendCode() async {
-    if (_untilResend > Duration.zero) return false;
-    return requestCode(nationalId: _nationalId, email: _email);
+    final identity = _identity;
+    if (_untilResend > Duration.zero || identity == null) return false;
+    return requestCode(identity);
   }
 
   /// Step 2. On success the token is held here, never handed to the screen:
   /// there is nothing a screen can usefully do with it except pass it back.
   Future<bool> verifyCode(String code) async {
+    final identity = _identity;
+    if (identity == null) {
+      _error = 'Vuelve a pedir un código.';
+      notifyListeners();
+      return false;
+    }
     _begin();
     try {
-      _resetToken = await _repository.verifyCode(
-        nationalId: _nationalId,
-        email: _email,
-        code: code,
-      );
+      _resetToken = await _repository.verifyCode(identity, code);
       _done();
       return true;
     } catch (e) {

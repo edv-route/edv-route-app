@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../routing/app_routes.dart';
 import '../../../../shared/widgets/auth_header.dart';
 import '../../../../shared/widgets/code_input_field.dart';
 import '../../../../shared/widgets/primary_button.dart';
@@ -8,14 +9,27 @@ import '../controllers/password_reset_controller.dart';
 import '../widgets/reset_error_line.dart';
 import 'password_reset_new_screen.dart';
 
-/// Step 2: the six digits that came by email.
+/// Step 2: the six digits that came by email. Shared by both recovery
+/// channels; the channel params ride through to the next screens untouched.
 ///
 /// The controller arrives from the previous screen rather than being built here
 /// — it already holds whose account this is, and rebuilding it would lose that.
 class PasswordResetCodeScreen extends StatefulWidget {
-  const PasswordResetCodeScreen({super.key, required this.controller});
+  const PasswordResetCodeScreen({
+    super.key,
+    required this.controller,
+    this.loginRoute,
+    this.intro,
+    this.doneMessage,
+  });
 
   final PasswordResetController controller;
+
+  /// Channel overrides forwarded to [PasswordResetNewScreen]; null keeps its
+  /// driver defaults.
+  final String? loginRoute;
+  final String? intro;
+  final String? doneMessage;
 
   @override
   State<PasswordResetCodeScreen> createState() => _PasswordResetCodeScreenState();
@@ -41,7 +55,14 @@ class _PasswordResetCodeScreenState extends State<PasswordResetCodeScreen> {
       return;
     }
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => PasswordResetNewScreen(controller: widget.controller)),
+      MaterialPageRoute(
+        builder: (_) => PasswordResetNewScreen(
+          controller: widget.controller,
+          loginRoute: widget.loginRoute ?? AppRoutes.driverLogin,
+          intro: widget.intro,
+          doneMessage: widget.doneMessage,
+        ),
+      ),
     );
   }
 

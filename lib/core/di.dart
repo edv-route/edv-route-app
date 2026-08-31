@@ -1,5 +1,9 @@
 import '../data/datasources/auth_remote_data_source.dart';
+import '../data/datasources/client_remote_data_source.dart';
 import '../data/datasources/driver_remote_data_source.dart';
+import '../data/repositories/client_auth_repository_impl.dart';
+import '../data/repositories/client_password_reset_repository_impl.dart';
+import '../domain/repositories/client_auth_repository.dart';
 import '../data/repositories/account_repository_impl.dart';
 import '../data/repositories/auth_repository_impl.dart';
 import '../data/repositories/catalogs_repository_impl.dart';
@@ -51,8 +55,19 @@ class Dependencies {
       NotificationsRepositoryImpl(_driverApi, tokenStorage);
 
 
-  /// Recovering a forgotten password. The ONLY repository that takes no token:
-  /// a driver who cannot log in has no session to authenticate with.
+  /// Recovering a forgotten password — the ONLY repositories that take no
+  /// token: whoever cannot log in has no session to authenticate with. One per
+  /// channel, same contract.
   late final PasswordResetRepository passwordResetRepository =
       PasswordResetRepositoryImpl(_apiClient);
+  late final PasswordResetRepository clientPasswordResetRepository =
+      ClientPasswordResetRepositoryImpl(_apiClient);
+
+  /// The passenger's session + own account, stored under its OWN token key so
+  /// a person who is affiliate and client never has one mode clobbering the
+  /// other's session.
+  late final ClientAuthRepository clientAuthRepository = ClientAuthRepositoryImpl(
+    ClientRemoteDataSource(_apiClient),
+    TokenStorage(key: TokenStorage.clientKey),
+  );
 }

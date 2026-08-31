@@ -13,7 +13,9 @@ import '../../../../data/models/register_request.dart';
 import '../controllers/driver_register_controller.dart';
 import '../../../../shared/widgets/national_id_field.dart';
 import '../../../../shared/widgets/operator_phone_field.dart';
+import '../../../../shared/widgets/privacy_check.dart';
 import '../../../../shared/widgets/registration_fields.dart';
+import '../../../../shared/validators/person_validators.dart';
 import '../../../enrollment/presentation/screens/checklist_hub_screen.dart';
 
 /// Driver self-registration — STEP 1 (solicitudes-app): personal data + privacy
@@ -51,9 +53,6 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   bool _acceptedPrivacy = false;
   bool _privacyError = false;
 
-  static final _nameRegex = RegExp(r"^\p{L}+(?:[ '-]\p{L}+)*$", unicode: true);
-  static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
   @override
   void dispose() {
     _controller.dispose();
@@ -70,51 +69,13 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     super.dispose();
   }
 
-  // --- validators (mirror the backend rules) ---
-  String? _validateName(String? v, {required bool required, required String field}) {
-    final t = (v ?? '').trim();
-    if (t.isEmpty) return required ? 'Ingresa $field.' : null;
-    if (required && t.length < 2) return 'Debe tener entre 2 y 80 letras.';
-    if (t.length > 80) return 'Máximo 80 letras.';
-    if (!_nameRegex.hasMatch(t)) return 'Solo se admiten letras.';
-    return null;
-  }
-
+  // --- validators: the person rules live in shared/validators (mirroring the
+  // backend), shared with the client registration; only the national id is
+  // affiliate-specific and stays here.
   String? _validateId(String? v) {
     final t = (v ?? '').trim();
     if (t.isEmpty) return 'Ingresa tu documento.';
     if (t.length < 5 || t.length > 9) return 'El documento debe tener entre 5 y 9 dígitos.';
-    return null;
-  }
-
-  String? _validatePassword(String? v) {
-    final t = v ?? '';
-    if (t.isEmpty) return 'Crea una clave.';
-    if (t.length < 6 || t.length > 72) return 'Entre 6 y 72 caracteres.';
-    return null;
-  }
-
-  String? _validatePasswordConfirm(String? v) {
-    final t = v ?? '';
-    if (t.isEmpty) return 'Repite tu clave.';
-    if (t != _password.text) return 'Las claves no coinciden.';
-    return null;
-  }
-
-  String? _validatePhone(String? v) {
-    final t = (v ?? '').trim();
-    if (t.isEmpty) return null;
-    if (t.length != 7) return 'El teléfono debe tener 7 dígitos (ej. 1234567).';
-    return null;
-  }
-
-  /// Email is REQUIRED: it is the channel a forgotten password is recovered
-  /// through, so an affiliate who registers without one has no way back into
-  /// the app. The panel has always demanded it; this channel used to not.
-  String? _validateEmail(String? v) {
-    final t = (v ?? '').trim();
-    if (t.isEmpty) return 'Ingresa tu correo electrónico.';
-    if (!_emailRegex.hasMatch(t)) return 'Correo inválido.';
     return null;
   }
 
@@ -158,10 +119,10 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   }
 
   RegisterRequest _buildRequest() => RegisterRequest(
-        firstName: _titleCase(_firstName.text),
-        middleName: _titleCase(_middleName.text),
-        lastName: _titleCase(_lastName.text),
-        secondLastName: _titleCase(_secondLastName.text),
+        firstName: titleCase(_firstName.text),
+        middleName: titleCase(_middleName.text),
+        lastName: titleCase(_lastName.text),
+        secondLastName: titleCase(_secondLastName.text),
         birthDate: _birthDate == null ? null : formatApiDate(_birthDate!),
         phone: _composePersonPhone(),
         email: _email.text.trim(),
@@ -178,15 +139,6 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     if (local.isEmpty || local.length != 7) return null;
     return '+58$_phoneOperator$local';
   }
-
-  /// Capitalizes the first letter of each word, leaving the rest untouched (so
-  /// acronyms like "BMW" survive). Empty input stays empty.
-  String _titleCase(String s) => s
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((w) => w.isNotEmpty)
-      .map((w) => w[0].toUpperCase() + w.substring(1))
-      .join(' ');
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +164,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       hintText: 'Tu primer nombre',
                       textCapitalization: TextCapitalization.words,
                       inputFormatters: letterInputFormatters(80),
-                      validator: (v) => _validateName(v, required: true, field: 'tu primer nombre'),
+                      validator: (v) => validatePersonName(v, required: true, field: 'tu primer nombre'),
                     ),
                     const SizedBox(height: 14),
                     BrandTextField(
@@ -221,7 +173,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       hintText: 'Tu segundo nombre',
                       textCapitalization: TextCapitalization.words,
                       inputFormatters: letterInputFormatters(80),
-                      validator: (v) => _validateName(v, required: false, field: 'tu segundo nombre'),
+                      validator: (v) => validatePersonName(v, required: false, field: 'tu segundo nombre'),
                     ),
                     const SizedBox(height: 14),
                     BrandTextField(
@@ -230,7 +182,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       hintText: 'Tu primer apellido',
                       textCapitalization: TextCapitalization.words,
                       inputFormatters: letterInputFormatters(80),
-                      validator: (v) => _validateName(v, required: true, field: 'tu primer apellido'),
+                      validator: (v) => validatePersonName(v, required: true, field: 'tu primer apellido'),
                     ),
                     const SizedBox(height: 14),
                     BrandTextField(
@@ -239,7 +191,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       hintText: 'Tu segundo apellido',
                       textCapitalization: TextCapitalization.words,
                       inputFormatters: letterInputFormatters(80),
-                      validator: (v) => _validateName(v, required: false, field: 'tu segundo apellido'),
+                      validator: (v) => validatePersonName(v, required: false, field: 'tu segundo apellido'),
                     ),
                     const SizedBox(height: 14),
                     DateField(
@@ -264,7 +216,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       operator: _phoneOperator,
                       onOperatorChanged: (o) => setState(() => _phoneOperator = o),
                       controller: _phoneNumber,
-                      validator: _validatePhone,
+                      validator: validatePersonPhone,
                     ),
                     const SizedBox(height: 14),
                     BrandTextField(
@@ -272,7 +224,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       controller: _email,
                       hintText: 'correo@ejemplo.com',
                       keyboardType: TextInputType.emailAddress,
-                      validator: _validateEmail,
+                      validator: validatePersonEmail,
                     ),
                     const SizedBox(height: 14),
                     BrandTextField(
@@ -286,13 +238,13 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       label: 'Crea tu clave',
                       controller: _password,
                       textInputAction: TextInputAction.next,
-                      validator: _validatePassword,
+                      validator: validateNewPassword,
                     ),
                     const SizedBox(height: 14),
                     PasswordField(
                       label: 'Repite tu clave',
                       controller: _passwordConfirm,
-                      validator: _validatePasswordConfirm,
+                      validator: (v) => validatePasswordConfirm(v, _password.text),
                     ),
                     const SizedBox(height: 6),
                     const Text(
@@ -301,7 +253,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                     const SizedBox(height: 18),
-                    _PrivacyCheck(
+                    PrivacyCheck(
                       value: _acceptedPrivacy,
                       error: _privacyError,
                       onChanged: (v) => setState(() {
@@ -348,58 +300,6 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Privacy-consent checkbox required to register. Turns red when submit is
-/// attempted without it (mirrors the field-level validation of the form).
-class _PrivacyCheck extends StatelessWidget {
-  final bool value;
-  final bool error;
-  final ValueChanged<bool> onChanged;
-
-  const _PrivacyCheck({required this.value, required this.error, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: () => onChanged(!value),
-          borderRadius: BorderRadius.circular(8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 26,
-                height: 26,
-                child: Checkbox(
-                  value: value,
-                  onChanged: (v) => onChanged(v ?? false),
-                  activeColor: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'He leído y acepto la Política de Privacidad.',
-                  style: TextStyle(fontSize: 13.5, color: AppColors.ink),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (error)
-          const Padding(
-            padding: EdgeInsets.only(left: 34, top: 2),
-            child: Text(
-              'Debes aceptar la política de privacidad para continuar.',
-              style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-          ),
-      ],
     );
   }
 }

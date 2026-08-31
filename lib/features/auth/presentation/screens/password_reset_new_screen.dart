@@ -9,16 +9,33 @@ import '../controllers/password_reset_controller.dart';
 import '../widgets/reset_error_line.dart';
 import 'password_reset_done_screen.dart';
 
-/// Step 3: the new password.
+/// Step 3: the new password. Shared by both recovery channels; the defaults
+/// speak driver, and the client flow passes its own routes and copy.
 ///
 /// The rules match what the API enforces (min 6, digits allowed — the PIN-like
 /// policy of 2026-07-16). They are shown as a live checklist rather than as an
-/// error after submitting: a driver typing a 4-digit PIN should see why the
+/// error after submitting: someone typing a 4-digit PIN should see why the
 /// button is dead, not press it and get told off.
 class PasswordResetNewScreen extends StatefulWidget {
-  const PasswordResetNewScreen({super.key, required this.controller});
+  const PasswordResetNewScreen({
+    super.key,
+    required this.controller,
+    this.loginRoute = AppRoutes.driverLogin,
+    String? intro,
+    this.doneMessage,
+  }) : intro = intro ?? 'Elige una clave nueva. La usarás junto a tu cédula para entrar.';
 
   final PasswordResetController controller;
+
+  /// The named login route this recovery started from — where the done screen
+  /// lands the user back.
+  final String loginRoute;
+
+  /// The sentence above the fields: how this channel signs in.
+  final String intro;
+
+  /// Override for the done screen's body; null keeps its driver default.
+  final String? doneMessage;
 
   @override
   State<PasswordResetNewScreen> createState() => _PasswordResetNewScreenState();
@@ -59,8 +76,13 @@ class _PasswordResetNewScreenState extends State<PasswordResetNewScreen> {
     // Replaces the stack: the recovery is over and there is nothing behind this
     // worth going back to — least of all a spent code.
     await Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const PasswordResetDoneScreen()),
-      ModalRoute.withName(AppRoutes.driverLogin),
+      MaterialPageRoute(
+        builder: (_) => PasswordResetDoneScreen(
+          loginRoute: widget.loginRoute,
+          message: widget.doneMessage,
+        ),
+      ),
+      ModalRoute.withName(widget.loginRoute),
     );
   }
 
@@ -80,9 +102,9 @@ class _PasswordResetNewScreenState extends State<PasswordResetNewScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Elige una clave nueva. La usarás junto a tu cédula para entrar.',
-                    style: TextStyle(fontSize: 14, height: 1.45, color: AppColors.ink),
+                  Text(
+                    widget.intro,
+                    style: const TextStyle(fontSize: 14, height: 1.45, color: AppColors.ink),
                   ),
                   const SizedBox(height: 24),
                   PasswordField(

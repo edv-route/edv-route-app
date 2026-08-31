@@ -15,3 +15,11 @@ String formatDisplayDate(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')}/'
     '${date.month.toString().padLeft(2, '0')}/'
     '${date.year}';
+
+const List<String> _monthNames = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+/// `agosto 2026` — for "member since" style lines.
+String formatMonthYear(DateTime date) => '${_monthNames[date.month - 1]} ${date.year}';

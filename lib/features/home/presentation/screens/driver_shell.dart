@@ -4,7 +4,7 @@ import '../../../../core/di.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../location/presentation/screens/location_permission_screen.dart';
 import '../../../../core/push/push_service.dart';
-import '../../../../theme/app_colors.dart';
+import '../../../../shared/widgets/floating_nav.dart';
 import '../../../../domain/entities/account_status.dart';
 import '../../../../domain/entities/driver.dart';
 import '../../../../shared/widgets/notice_banner.dart';
@@ -213,99 +213,12 @@ class _DriverShellState extends State<DriverShell> {
           ),
         ],
       ),
-      bottomNavigationBar: _FloatingNav(
+      bottomNavigationBar: FloatingNav(
         index: _index,
         onSelected: (i) => setState(() => _index = i),
-      ),
-    );
-  }
-}
-
-/// Floating "island" bottom navigation: a brand-red rounded pill, detached from
-/// the screen edges, with a gold-highlighted active tab (modern-app style).
-class _FloatingNav extends StatelessWidget {
-  final int index;
-  final ValueChanged<int> onSelected;
-
-  const _FloatingNav({required this.index, required this.onSelected});
-
-  static const List<({IconData icon, String label})> _tabs = [
-    (icon: Icons.home_rounded, label: 'Inicio'),
-    (icon: Icons.person_rounded, label: 'Perfil'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: Container(
-          height: 64,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(26),
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < _tabs.length; i++)
-                Expanded(
-                  child: _NavItem(
-                    icon: _tabs[i].icon,
-                    label: _tabs[i].label,
-                    selected: i == index,
-                    onTap: () => onSelected(i),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const inactive = Colors.white70;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.gold : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, size: 20, color: selected ? const Color(0xFF661212) : inactive),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: selected ? AppColors.gold : inactive,
-            ),
-          ),
+        tabs: const [
+          (icon: Icons.home_rounded, label: 'Inicio'),
+          (icon: Icons.person_rounded, label: 'Perfil'),
         ],
       ),
     );

@@ -14,4 +14,9 @@ abstract final class AppRoutes {
   /// Informational pre-screen (membership + benefits) that starts the join flow.
   static const String registerIntro = '/driver/register/info';
   static const String driverRegister = '/driver/register';
+  static const String clientLogin = '/client/login';
+  static const String clientRegister = '/client/register';
+  /// The passenger's "olvidé mi clave". Reachable ONLY from his login, for the
+  /// same reason the driver's is: that is where he discovers he cannot get in.
+  static const String clientPasswordReset = '/client/password-reset';
 }

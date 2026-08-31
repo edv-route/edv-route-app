@@ -1,30 +1,27 @@
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../domain/repositories/password_reset_repository.dart';
 
-/// Talks to `/driver-auth/password-reset/*`. No token is threaded anywhere:
-/// these are the only driver endpoints that are public, because a driver who
-/// forgot his password cannot hold a session.
+/// The DRIVER channel: talks to `/driver-auth/password-reset/*`. No token is
+/// threaded anywhere: these are the only driver endpoints that are public,
+/// because a driver who forgot his password cannot hold a session.
 class PasswordResetRepositoryImpl implements PasswordResetRepository {
   PasswordResetRepositoryImpl(this._client);
 
   final ApiClient _client;
 
   @override
-  Future<void> requestCode({required String nationalId, required String email}) =>
+  Future<void> requestCode(ResetIdentity identity) =>
       _client.post('/driver-auth/password-reset/request', {
-        'nationalId': nationalId,
-        'email': email,
+        'nationalId': _requireNationalId(identity),
+        'email': identity.email,
       });
 
   @override
-  Future<String> verifyCode({
-    required String nationalId,
-    required String email,
-    required String code,
-  }) async {
+  Future<String> verifyCode(ResetIdentity identity, String code) async {
     final res = await _client.post('/driver-auth/password-reset/verify', {
-      'nationalId': nationalId,
-      'email': email,
+      'nationalId': _requireNationalId(identity),
+      'email': identity.email,
       'code': code,
     });
     return res['resetToken'] as String;
@@ -36,4 +33,14 @@ class PasswordResetRepositoryImpl implements PasswordResetRepository {
         'resetToken': resetToken,
         'password': password,
       });
+
+  /// The driver channel proves identity with the PAIR; an identity without the
+  /// cédula is a programming error, caught here before it becomes a 400.
+  String _requireNationalId(ResetIdentity identity) {
+    final id = identity.nationalId;
+    if (id == null || id.isEmpty) {
+      throw const ApiException('Falta la cédula para recuperar la clave.');
+    }
+    return id;
+  }
 }

@@ -4,6 +4,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import './features/auth/presentation/screens/driver_login_screen.dart';
 import 'features/auth/presentation/screens/password_reset_identity_screen.dart';
 import './features/auth/presentation/screens/driver_register_screen.dart';
+import './features/client/auth/presentation/screens/client_login_screen.dart';
+import './features/client/auth/presentation/screens/client_password_reset_screen.dart';
+import './features/client/auth/presentation/screens/client_register_screen.dart';
 import './features/enrollment/presentation/screens/membership_info_screen.dart';
 import './features/auth/presentation/screens/splash_screen.dart';
 import './features/auth/presentation/screens/user_type_selection_screen.dart';
@@ -36,6 +39,9 @@ class EdvRouteApp extends StatelessWidget {
         AppRoutes.passwordReset: (_) => const PasswordResetIdentityScreen(),
         AppRoutes.registerIntro: (_) => const MembershipInfoScreen(),
         AppRoutes.driverRegister: (_) => const DriverRegisterScreen(),
+        AppRoutes.clientLogin: (_) => const ClientLoginScreen(),
+        AppRoutes.clientRegister: (_) => const ClientRegisterScreen(),
+        AppRoutes.clientPasswordReset: (_) => const ClientPasswordResetScreen(),
       },
     );
   }

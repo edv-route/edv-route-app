@@ -4,9 +4,8 @@ import '../../../../routing/app_routes.dart';
 import '../../../../shared/widgets/auth_header.dart';
 import '../widgets/user_mode_card.dart';
 
-/// First screen: the user picks how to enter the app. Driver ("conductor") is
-/// live; passenger ("pasajero") is disabled with a "Próximamente" badge until
-/// that side of the product ships.
+/// First screen: the user picks how to enter the app. Both modes are live:
+/// conductor goes to the affiliate login, pasajero to the client login.
 class UserTypeSelectionScreen extends StatelessWidget {
   const UserTypeSelectionScreen({super.key});
 
@@ -35,13 +34,13 @@ class UserTypeSelectionScreen extends StatelessWidget {
                         Navigator.of(context).pushNamed(AppRoutes.driverLogin),
                   ),
                   const SizedBox(height: 16),
-                  const UserModeCard(
+                  UserModeCard(
                     modePrefix: 'Modo',
                     modeName: 'pasajero',
-                    description:
-                        'Solicita viajes como cliente. Disponible muy pronto.',
+                    description: 'Pide viajes con choferes verificados.',
                     icon: Icons.person_outline,
-                    enabled: false,
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.clientLogin),
                   ),
                 ],
               ),

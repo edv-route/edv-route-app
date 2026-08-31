@@ -15,22 +15,21 @@ class _FakeRepo implements PasswordResetRepository {
   final Object? verifyError;
 
   int requests = 0;
+  ResetIdentity? lastIdentity;
   String? lastCode;
   String? lastToken;
   String? lastPassword;
 
   @override
-  Future<void> requestCode({required String nationalId, required String email}) async {
+  Future<void> requestCode(ResetIdentity identity) async {
     requests++;
+    lastIdentity = identity;
     if (requestError != null) throw requestError!;
   }
 
   @override
-  Future<String> verifyCode({
-    required String nationalId,
-    required String email,
-    required String code,
-  }) async {
+  Future<String> verifyCode(ResetIdentity identity, String code) async {
+    lastIdentity = identity;
     lastCode = code;
     if (verifyError != null) throw verifyError!;
     return 'reset-token';
@@ -122,7 +121,7 @@ void main() {
       final repo = _FakeRepo();
       final c = PasswordResetController(repo);
 
-      expect(await c.requestCode(nationalId: 'V-22198958', email: 'a@b.com'), isTrue);
+      expect(await c.requestCode(const ResetIdentity(nationalId: 'V-22198958', email: 'a@b.com')), isTrue);
       expect(c.email, 'a@b.com');
       // Verify does not receive the cédula from the screen: if the controller
       // lost it, this call would go out empty.
@@ -136,7 +135,7 @@ void main() {
       final c = PasswordResetController(
         _FakeRepo(verifyError: ApiException('El código no es correcto. Te quedan 2 intentos.')),
       );
-      await c.requestCode(nationalId: 'V-1', email: 'a@b.com');
+      await c.requestCode(const ResetIdentity(nationalId: 'V-1', email: 'a@b.com'));
 
       expect(await c.verifyCode('000000'), isFalse);
       // Not a generic line: the server knows the count, the app does not.
@@ -148,7 +147,7 @@ void main() {
     test('confirm sends the token the verify step returned', () async {
       final repo = _FakeRepo();
       final c = PasswordResetController(repo);
-      await c.requestCode(nationalId: 'V-1', email: 'a@b.com');
+      await c.requestCode(const ResetIdentity(nationalId: 'V-1', email: 'a@b.com'));
       await c.verifyCode('481290');
 
       expect(await c.confirm('123456'), isTrue);
@@ -174,7 +173,7 @@ void main() {
       );
       final c = PasswordResetController(repo);
 
-      expect(await c.requestCode(nationalId: 'V-1', email: 'nope@b.com'), isFalse);
+      expect(await c.requestCode(const ResetIdentity(nationalId: 'V-1', email: 'nope@b.com')), isFalse);
       expect(c.error, 'Los datos no coinciden con ninguna cuenta');
       // No countdown was started, so "Reenviar" is not blocked by a cooldown
       // for a code that was never issued.
@@ -184,10 +183,25 @@ void main() {
       c.dispose();
     });
 
+    test('a client identity (email alone) travels intact to the verify step', () async {
+      final repo = _FakeRepo();
+      final c = PasswordResetController(repo);
+
+      // The client channel has no cédula; the controller must neither demand
+      // one nor invent one.
+      await c.requestCode(const ResetIdentity(email: 'pasajero@b.com'));
+      await c.verifyCode('481290');
+
+      expect(repo.lastIdentity!.email, 'pasajero@b.com');
+      expect(repo.lastIdentity!.nationalId, isNull);
+
+      c.dispose();
+    });
+
     test('resend is refused while the cooldown runs', () async {
       final repo = _FakeRepo();
       final c = PasswordResetController(repo);
-      await c.requestCode(nationalId: 'V-1', email: 'a@b.com');
+      await c.requestCode(const ResetIdentity(nationalId: 'V-1', email: 'a@b.com'));
 
       // The server would answer 429; the app should not earn that error.
       expect(await c.resendCode(), isFalse);
