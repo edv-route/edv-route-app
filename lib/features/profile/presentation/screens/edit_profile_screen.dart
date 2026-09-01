@@ -105,11 +105,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return null;
   }
 
+  // Numeric 6-8 (Luis, 2026-09-01); the current one stays lenient because
+  // passwords predating the policy must still be able to prove themselves.
+  static final _appPasswordRegex = RegExp(r'^\d{6,8}$');
+
   String? _validateNewPassword(String? v) {
     if (!_changingPassword) return null;
     final t = v ?? '';
     if (t.isEmpty) return 'Escribe tu nueva clave.';
-    if (t.length < 6 || t.length > 72) return 'Entre 6 y 72 caracteres.';
+    if (!_appPasswordRegex.hasMatch(t)) return 'Solo números, de 6 a 8.';
     return null;
   }
 

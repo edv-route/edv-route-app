@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/di.dart';
+import '../../../../../core/utils/date_format.dart';
 import '../../../../../data/models/client_register_request.dart';
 import '../../../../../shared/validators/person_validators.dart';
 import '../../../../../shared/widgets/auth_header.dart';
@@ -14,13 +15,16 @@ import '../../../../../theme/app_colors.dart';
 import '../../../home/presentation/screens/client_shell.dart';
 import '../controllers/client_register_controller.dart';
 
-/// Passenger self-registration: just the basic personal data (mock: "Solo tus
-/// datos básicos"). The field rules are the SAME as the affiliate's — imported
-/// from shared/validators, not copied — but there is no cédula: asking a
-/// passenger for his document to download an app is friction (decision by
-/// Luis, 2026-08-31). Registering signs him in directly: no approval step.
+/// Passenger self-registration: the SAME fields as the affiliate's, with the
+/// same shared validators (decision by Luis, 2026-08-31 — it replaced the
+/// earlier "solo datos básicos" cut). Cédula, birth date and phone are
+/// mandatory; only middle name, second last name and address are optional.
+/// Registering signs him in directly: no approval step.
 class ClientRegisterScreen extends StatefulWidget {
-  const ClientRegisterScreen({super.key});
+  /// Already validated by the cédula gate (step 0): shown locked here.
+  final String nationalId;
+
+  const ClientRegisterScreen({super.key, required this.nationalId});
 
   @override
   State<ClientRegisterScreen> createState() => _ClientRegisterScreenState();
@@ -35,9 +39,12 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
   final _middleName = TextEditingController();
   final _lastName = TextEditingController();
   final _secondLastName = TextEditingController();
+  DateTime? _birthDate;
+  bool _birthDateError = false;
   String _phoneOperator = kPhoneOperators.first.code;
   final _phoneNumber = TextEditingController();
   final _email = TextEditingController();
+  final _address = TextEditingController();
   final _password = TextEditingController();
   final _passwordConfirm = TextEditingController();
   bool _acceptedPrivacy = false;
@@ -52,16 +59,42 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
     _secondLastName.dispose();
     _phoneNumber.dispose();
     _email.dispose();
+    _address.dispose();
     _password.dispose();
     _passwordConfirm.dispose();
     super.dispose();
   }
 
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final maxBirth = DateTime(now.year - 18, now.month, now.day);
+    final initial = _birthDate ?? DateTime(now.year - 25, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isAfter(maxBirth) ? maxBirth : initial,
+      firstDate: DateTime(1920),
+      lastDate: maxBirth,
+      helpText: 'Fecha de nacimiento',
+    );
+    if (picked != null) {
+      setState(() {
+        _birthDate = picked;
+        _birthDateError = false;
+      });
+    }
+  }
+
   Future<void> _submit() async {
     final formOk = _formKey.currentState?.validate() ?? false;
+    final birthMissing = _birthDate == null;
     final privacyMissing = !_acceptedPrivacy;
-    if (privacyMissing) setState(() => _privacyError = true);
-    if (!formOk || privacyMissing) return;
+    if (birthMissing || privacyMissing) {
+      setState(() {
+        _birthDateError = birthMissing;
+        _privacyError = privacyMissing;
+      });
+    }
+    if (!formOk || birthMissing || privacyMissing) return;
 
     final client = await _controller.register(_buildRequest());
     if (client != null && mounted) {
@@ -78,19 +111,14 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
         middleName: titleCase(_middleName.text),
         lastName: titleCase(_lastName.text),
         secondLastName: titleCase(_secondLastName.text),
+        birthDate: formatApiDate(_birthDate!),
+        nationalId: widget.nationalId,
+        phone: '+58$_phoneOperator${_phoneNumber.text.trim()}',
         email: _email.text.trim(),
-        phone: _composePersonPhone(),
+        address: _address.text.trim(),
         password: _password.text,
         acceptedPrivacy: _acceptedPrivacy,
       );
-
-  /// Composes the phone from the operator selector + a 7-digit local number
-  /// into E.164 (+58 + operator + 7 digits). Returns null when blank.
-  String? _composePersonPhone() {
-    final local = _phoneNumber.text.trim();
-    if (local.isEmpty || local.length != 7) return null;
-    return '+58$_phoneOperator$local';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +128,7 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
           const AuthHeader(
             showBack: true,
             title: 'Crear mi cuenta',
-            subtitle: 'Solo tus datos básicos',
+            subtitle: 'Tus datos personales',
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -142,6 +170,45 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
                       field: 'tu segundo apellido',
                     ),
                     const SizedBox(height: 14),
+                    DateField(
+                      label: 'Fecha de nacimiento',
+                      value: _birthDate,
+                      onTap: _pickBirthDate,
+                      errorText: _birthDateError ? 'Selecciona tu fecha de nacimiento.' : null,
+                    ),
+                    const SizedBox(height: 14),
+                    // The cédula was validated at the gate (step 0): shown
+                    // locked so the form and the check can never disagree.
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardGrey.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_outline, size: 18, color: AppColors.muted),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Cédula: ${widget.nationalId}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    OperatorPhoneField(
+                      label: 'Teléfono',
+                      operator: _phoneOperator,
+                      onOperatorChanged: (o) => setState(() => _phoneOperator = o),
+                      controller: _phoneNumber,
+                      validator: validateRequiredPersonPhone,
+                    ),
+                    const SizedBox(height: 14),
                     BrandTextField(
                       label: 'Correo',
                       controller: _email,
@@ -155,12 +222,10 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                     const SizedBox(height: 14),
-                    OperatorPhoneField(
-                      label: 'Teléfono (opcional)',
-                      operator: _phoneOperator,
-                      onOperatorChanged: (o) => setState(() => _phoneOperator = o),
-                      controller: _phoneNumber,
-                      validator: validatePersonPhone,
+                    BrandTextField(
+                      label: 'Dirección (opcional)',
+                      controller: _address,
+                      hintText: 'Tu dirección',
                     ),
                     const SizedBox(height: 14),
                     PasswordField(
@@ -178,7 +243,7 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
                     const SizedBox(height: 6),
                     const Text(
                       'Con tu correo (o tu teléfono) y esta clave entrarás a la app '
-                      '(mínimo 6 caracteres; puede ser solo números).',
+                      '(solo números, de 6 a 8).',
                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                     const SizedBox(height: 18),

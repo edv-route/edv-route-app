@@ -11,9 +11,23 @@ abstract interface class ClientAuthRepository {
   /// credentials or transport errors.
   Future<Client> login({required String identifier, required String password});
 
-  /// Creates the account (or attaches the client side to an existing affiliate,
-  /// which the backend resolves) and persists the returned session token.
+  /// Step 0 of the registration (cédula-first): which form does this cédula
+  /// deserve? Returns `new`, `attachable` or `exists`.
+  Future<String> checkCedula(String nationalId);
+
+  /// FULL registration (new person) — persists the returned session token.
   Future<Client> register(ClientRegisterRequest request);
+
+  /// SHORT registration: an existing person (an affiliate) gains the client
+  /// side, proving it is him with the password he already has and bringing
+  /// this role's own email, phone and password.
+  Future<Client> attach({
+    required String nationalId,
+    required String currentPassword,
+    required String email,
+    required String phone,
+    required String password,
+  });
 
   /// The current session's profile (GET /me) when a valid token is stored, or
   /// null when there is no session or it expired (the token is then cleared).

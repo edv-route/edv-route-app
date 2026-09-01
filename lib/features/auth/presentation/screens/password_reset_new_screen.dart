@@ -45,7 +45,8 @@ class _PasswordResetNewScreenState extends State<PasswordResetNewScreen> {
   final _password = TextEditingController();
   final _repeat = TextEditingController();
 
-  static const _minLength = 6;
+  /// Numeric 6-8 (Luis, 2026-09-01): the new password follows the app policy.
+  static final _appPasswordRegex = RegExp(r'^\d{6,8}$');
 
   @override
   void initState() {
@@ -65,9 +66,9 @@ class _PasswordResetNewScreenState extends State<PasswordResetNewScreen> {
     super.dispose();
   }
 
-  bool get _longEnough => _password.text.trim().length >= _minLength;
+  bool get _validFormat => _appPasswordRegex.hasMatch(_password.text.trim());
   bool get _matches => _password.text.isNotEmpty && _password.text == _repeat.text;
-  bool get _valid => _longEnough && _matches;
+  bool get _valid => _validFormat && _matches;
 
   Future<void> _submit() async {
     if (!_valid || widget.controller.loading) return;
@@ -127,7 +128,7 @@ class _PasswordResetNewScreenState extends State<PasswordResetNewScreen> {
                     ),
                     child: Column(
                       children: [
-                        _Rule(met: _longEnough, label: 'Al menos $_minLength caracteres'),
+                        _Rule(met: _validFormat, label: 'Solo números, de 6 a 8'),
                         const SizedBox(height: 10),
                         _Rule(met: _matches, label: 'Las dos claves coinciden'),
                       ],

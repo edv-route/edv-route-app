@@ -33,8 +33,22 @@ class PaymentCapture {
 /// (documents and vehicles with their files) and paying the alta once an admin
 /// approves it. Everything past [register] needs the session it returns.
 abstract interface class EnrollmentRepository {
+  /// Step 0 of the registration (cédula-first): `new`, `attachable` or `exists`.
+  Future<String> checkCedula(String nationalId);
+
   /// Creates the account (persists the returned token) and returns the ids created.
   Future<RegisterResult> register(RegisterRequest request);
+
+  /// SHORT registration: a CLIENT gains the driver side, proving it is him
+  /// with his client password and bringing this role's own email, phone and
+  /// password. Persists the returned token like [register].
+  Future<RegisterResult> attach({
+    required String nationalId,
+    required String currentPassword,
+    required String email,
+    required String phone,
+    required String password,
+  });
 
   /// The applicant's checklist: documents and vehicles with their review state.
   Future<Checklist> loadChecklist();

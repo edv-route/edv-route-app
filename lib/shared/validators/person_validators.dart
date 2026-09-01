@@ -35,11 +35,30 @@ String? validatePersonPhone(String? v) {
   return null;
 }
 
-/// New password: 6-72 characters, digits-only allowed (PIN-style).
+/// The cédula's digits (the V/E/J selector travels separately): 5-9 digits.
+/// Mandatory on BOTH registrations since 2026-08-31.
+String? validateNationalIdDigits(String? v) {
+  final t = (v ?? '').trim();
+  if (t.isEmpty) return 'Ingresa tu documento.';
+  if (t.length < 5 || t.length > 9) return 'El documento debe tener entre 5 y 9 dígitos.';
+  return null;
+}
+
+/// The phone when the form REQUIRES it (the client registration): same 7-digit
+/// rule as [validatePersonPhone], but blank is an error.
+String? validateRequiredPersonPhone(String? v) {
+  if ((v ?? '').trim().isEmpty) return 'Ingresa tu teléfono.';
+  return validatePersonPhone(v);
+}
+
+final RegExp _appPasswordRegex = RegExp(r'^\d{6,8}$');
+
+/// New password (both roles): digits only, 6 to 8 (decision by Luis,
+/// 2026-09-01). Old passwords keep working at login; this rules NEW ones.
 String? validateNewPassword(String? v) {
   final t = v ?? '';
   if (t.isEmpty) return 'Crea una clave.';
-  if (t.length < 6 || t.length > 72) return 'Entre 6 y 72 caracteres.';
+  if (!_appPasswordRegex.hasMatch(t)) return 'Solo números, de 6 a 8.';
   return null;
 }
 

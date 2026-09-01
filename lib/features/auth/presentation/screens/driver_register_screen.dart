@@ -11,7 +11,6 @@ import '../../../../shared/widgets/primary_button.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../data/models/register_request.dart';
 import '../controllers/driver_register_controller.dart';
-import '../../../../shared/widgets/national_id_field.dart';
 import '../../../../shared/widgets/operator_phone_field.dart';
 import '../../../../shared/widgets/privacy_check.dart';
 import '../../../../shared/widgets/registration_fields.dart';
@@ -25,7 +24,10 @@ import '../../../enrollment/presentation/screens/checklist_hub_screen.dart';
 /// before the API. (The old 4-step wizard is gone: docs/vehicle/payment moved to
 /// the checklist and the /me/* endpoints.)
 class DriverRegisterScreen extends StatefulWidget {
-  const DriverRegisterScreen({super.key});
+  /// Already validated by the cédula gate (step 0): shown locked here.
+  final String nationalId;
+
+  const DriverRegisterScreen({super.key, required this.nationalId});
 
   @override
   State<DriverRegisterScreen> createState() => _DriverRegisterScreenState();
@@ -42,8 +44,6 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   final _secondLastName = TextEditingController();
   DateTime? _birthDate;
   bool _birthDateError = false;
-  String _docType = 'V';
-  final _idDigits = TextEditingController();
   String _phoneOperator = kPhoneOperators.first.code;
   final _phoneNumber = TextEditingController();
   final _email = TextEditingController();
@@ -60,23 +60,12 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     _middleName.dispose();
     _lastName.dispose();
     _secondLastName.dispose();
-    _idDigits.dispose();
     _phoneNumber.dispose();
     _email.dispose();
     _address.dispose();
     _password.dispose();
     _passwordConfirm.dispose();
     super.dispose();
-  }
-
-  // --- validators: the person rules live in shared/validators (mirroring the
-  // backend), shared with the client registration; only the national id is
-  // affiliate-specific and stays here.
-  String? _validateId(String? v) {
-    final t = (v ?? '').trim();
-    if (t.isEmpty) return 'Ingresa tu documento.';
-    if (t.length < 5 || t.length > 9) return 'El documento debe tener entre 5 y 9 dígitos.';
-    return null;
   }
 
   Future<void> _pickBirthDate() async {
@@ -127,7 +116,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
         phone: _composePersonPhone(),
         email: _email.text.trim(),
         address: _address.text.trim(),
-        nationalId: '$_docType-${_idDigits.text.trim()}',
+        nationalId: widget.nationalId,
         password: _password.text,
         acceptedPrivacy: _acceptedPrivacy,
       );
@@ -201,14 +190,28 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       errorText: _birthDateError ? 'Selecciona tu fecha de nacimiento.' : null,
                     ),
                     const SizedBox(height: 14),
-                    NationalIdField(
-                      label: 'Documento de identidad',
-                      hintText: '12345678',
-                      locked: true,
-                      type: _docType,
-                      onTypeChanged: (t) => setState(() => _docType = t),
-                      controller: _idDigits,
-                      validator: _validateId,
+                    // The cédula was validated at the gate (step 0): shown
+                    // locked so the form and the check can never disagree.
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardGrey.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_outline, size: 18, color: AppColors.muted),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Cédula: ${widget.nationalId}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 14),
                     OperatorPhoneField(
@@ -249,7 +252,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     const SizedBox(height: 6),
                     const Text(
                       'Tu usuario será tu número de documento. Con esta clave entrarás a la '
-                      'app (mínimo 6 caracteres; puede ser solo números).',
+                      'app (solo números, de 6 a 8).',
                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                     const SizedBox(height: 18),

@@ -18,6 +18,14 @@ class ClientRemoteDataSource {
   Future<Map<String, dynamic>> register(Map<String, dynamic> body) =>
       _client.post('/client-auth/register', body);
 
+  /// POST /client-auth/register/check-cedula → `{ status }` (paso 0).
+  Future<Map<String, dynamic>> checkCedula(String nationalId) =>
+      _client.post('/client-auth/register/check-cedula', {'nationalId': nationalId});
+
+  /// POST /client-auth/register/attach → `{ token, client }` (formulario corto).
+  Future<Map<String, dynamic>> attach(Map<String, dynamic> body) =>
+      _client.post('/client-auth/register/attach', body);
+
   /// GET /client-auth/me → the client's profile (bearer auth).
   Future<Map<String, dynamic>> me(String token) =>
       _client.get('/client-auth/me', token: token);

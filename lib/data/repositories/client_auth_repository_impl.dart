@@ -22,8 +22,32 @@ class ClientAuthRepositoryImpl extends SessionBoundRepository implements ClientA
   }
 
   @override
+  Future<String> checkCedula(String nationalId) async {
+    final data = await _remote.checkCedula(nationalId);
+    return data['status'] as String? ?? 'new';
+  }
+
+  @override
   Future<Client> register(ClientRegisterRequest request) async {
     return _saveSession(await _remote.register(request.toJson()));
+  }
+
+  @override
+  Future<Client> attach({
+    required String nationalId,
+    required String currentPassword,
+    required String email,
+    required String phone,
+    required String password,
+  }) async {
+    return _saveSession(await _remote.attach({
+      'nationalId': nationalId,
+      'currentPassword': currentPassword,
+      'email': email,
+      'phone': phone,
+      'password': password,
+      'acceptedPrivacy': true,
+    }));
   }
 
   @override

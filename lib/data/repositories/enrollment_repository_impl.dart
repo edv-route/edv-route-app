@@ -19,7 +19,34 @@ class EnrollmentRepositoryImpl extends SessionBoundRepository implements Enrollm
 
   @override
   Future<RegisterResult> register(RegisterRequest request) async {
-    final data = await _remote.register(request.toJson());
+    return _saveRegisterSession(await _remote.register(request.toJson()));
+  }
+
+  @override
+  Future<String> checkCedula(String nationalId) async {
+    final data = await _remote.checkCedula(nationalId);
+    return data['status'] as String? ?? 'new';
+  }
+
+  @override
+  Future<RegisterResult> attach({
+    required String nationalId,
+    required String currentPassword,
+    required String email,
+    required String phone,
+    required String password,
+  }) async {
+    return _saveRegisterSession(await _remote.attach({
+      'nationalId': nationalId,
+      'currentPassword': currentPassword,
+      'email': email,
+      'phone': phone,
+      'password': password,
+      'acceptedPrivacy': true,
+    }));
+  }
+
+  Future<RegisterResult> _saveRegisterSession(Map<String, dynamic> data) async {
     final result = RegisterResult.fromJson(data);
     if (result.token.isEmpty) {
       throw const ApiException('Respuesta de registro incompleta.');

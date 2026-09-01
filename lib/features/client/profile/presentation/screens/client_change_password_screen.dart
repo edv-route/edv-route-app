@@ -136,7 +136,7 @@ class _ClientChangePasswordScreenState extends State<ClientChangePasswordScreen>
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Mínimo 6 caracteres; puede ser solo números.',
+                    'Solo números, de 6 a 8.',
                     style: TextStyle(color: AppColors.muted, fontSize: 12),
                   ),
                   const SizedBox(height: 22),

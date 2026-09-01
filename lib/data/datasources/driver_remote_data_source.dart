@@ -22,6 +22,14 @@ class DriverRemoteDataSource {
   Future<Map<String, dynamic>> register(Map<String, dynamic> body) =>
       _client.post('/driver-auth/register', body);
 
+  /// POST /driver-auth/register/check-cedula → `{ status }` (paso 0).
+  Future<Map<String, dynamic>> checkCedula(String nationalId) =>
+      _client.post('/driver-auth/register/check-cedula', {'nationalId': nationalId});
+
+  /// POST /driver-auth/register/attach → registro corto (cliente → afiliado).
+  Future<Map<String, dynamic>> attach(Map<String, dynamic> body) =>
+      _client.post('/driver-auth/register/attach', body);
+
   /// Authenticated: the applicant's "completa tu solicitud" checklist (documents +
   /// vehicles with their per-item review state).
   Future<Map<String, dynamic>> checklist({required String token}) =>
