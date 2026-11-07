@@ -8,8 +8,9 @@ abstract final class AppConfig {
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    // Moved to the new Railway account on 2026-08-26; the `-production` suffix
-    // is what Railway generated when the old name was still taken.
-    defaultValue: 'https://edv-route-backend-production.up.railway.app/api/v1',
+    // Moved to a third, paid Railway account on 2026-11-07, which reclaimed the
+    // original name: the `-production` suffix of 2026-08-26 is gone. Installed
+    // builds that still carry the old URL stop working until updated.
+    defaultValue: 'https://edv-route-backend.up.railway.app/api/v1',
   );
 }
