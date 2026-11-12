@@ -19,6 +19,13 @@ class ClientRegisterController extends ChangeNotifier {
   bool get submitting => _submitting;
   String? get error => _error;
 
+  void clearError() {
+    if (_error != null) {
+      _error = null;
+      notifyListeners();
+    }
+  }
+
   /// Registers the client. Returns the created [Client] on success, or null
   /// with [error] populated for the UI.
   Future<Client?> register(ClientRegisterRequest request) async {

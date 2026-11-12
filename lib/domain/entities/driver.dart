@@ -1,3 +1,5 @@
+import 'identity.dart';
+
 /// Administrative status of a driver — mirrors the backend `driver_status` enum.
 /// The arrears states (`overdue`, `penalized`) are written by the debt engine, not
 /// by an admin: an affiliate moves between them without anyone touching the app.
@@ -54,6 +56,10 @@ class Driver {
   /// Average driver rating (0–5), or null when there are no ratings yet.
   final double? avgRating;
 
+  /// Identity photos (2026-11-12). Only `GET /me` carries it; null when the
+  /// payload came from login/register, where the server does not compute it.
+  final IdentityStatus? identityStatus;
+
   const Driver({
     required this.userId,
     required this.fullName,
@@ -66,6 +72,7 @@ class Driver {
     required this.isAvailable,
     this.tariffStarted = false,
     this.avgRating,
+    this.identityStatus,
   });
 
   /// Locally applies what an edit (or a new photo) returned, so the profile
@@ -82,5 +89,6 @@ class Driver {
         isAvailable: isAvailable ?? this.isAvailable,
         tariffStarted: tariffStarted,
         avgRating: avgRating,
+        identityStatus: identityStatus,
       );
 }

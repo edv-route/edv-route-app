@@ -2,6 +2,10 @@
     <!-- Network calls to the EDV backend (release talks HTTPS to Railway). -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Identity photos (2026-11-12): selfie with the front camera and the
+         cédula with the back one, taken inside the app — never the gallery. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+
     <!-- Location while working (proposal: ubicacion-afiliados). COARSE goes with
          FINE because Android 12+ lets the user grant only the approximate one,
          and half a position beats none. -->

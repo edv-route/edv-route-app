@@ -3,6 +3,8 @@ import '../data/datasources/client_remote_data_source.dart';
 import '../data/datasources/driver_remote_data_source.dart';
 import '../data/repositories/client_auth_repository_impl.dart';
 import '../data/repositories/client_password_reset_repository_impl.dart';
+import '../data/repositories/identity_repository_impl.dart';
+import '../domain/repositories/identity_repository.dart';
 import '../domain/repositories/client_auth_repository.dart';
 import '../data/repositories/account_repository_impl.dart';
 import '../data/repositories/auth_repository_impl.dart';
@@ -68,6 +70,16 @@ class Dependencies {
   /// other's session.
   late final ClientAuthRepository clientAuthRepository = ClientAuthRepositoryImpl(
     ClientRemoteDataSource(_apiClient),
-    TokenStorage(key: TokenStorage.clientKey),
+    _clientTokenStorage,
   );
+
+  /// One store per session kind, shared by every repository of that channel.
+  late final TokenStorage _clientTokenStorage = TokenStorage(key: TokenStorage.clientKey);
+
+  /// Identity photos (2026-11-12): same contract, one per channel — the
+  /// photos belong to the person, the session decides which door is used.
+  late final IdentityRepository driverIdentityRepository =
+      IdentityRepositoryImpl(_apiClient, tokenStorage, prefix: '/driver-auth');
+  late final IdentityRepository clientIdentityRepository =
+      IdentityRepositoryImpl(_apiClient, _clientTokenStorage, prefix: '/client-auth');
 }

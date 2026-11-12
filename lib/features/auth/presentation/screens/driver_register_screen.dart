@@ -16,6 +16,9 @@ import '../../../../shared/widgets/privacy_check.dart';
 import '../../../../shared/widgets/registration_fields.dart';
 import '../../../../shared/validators/person_validators.dart';
 import '../../../enrollment/presentation/screens/checklist_hub_screen.dart';
+import '../../../identity/presentation/controllers/identity_flow_controller.dart';
+import '../../../identity/presentation/screens/identity_photos_screen.dart';
+import '../../../../core/network/api_exception.dart';
 
 /// Driver self-registration — STEP 1 (solicitudes-app): personal data + privacy
 /// consent. Submitting creates an `applicant` and continues to the checklist,
@@ -99,12 +102,38 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     }
     if (!formOk || birthMissing || privacyMissing) return;
 
-    final driver = await _controller.register(_buildRequest());
-    if (driver != null && mounted) {
-      await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ChecklistHubScreen()),
-      );
-    }
+    // Step 2 (2026-11-12): the identity photos are taken BEFORE the account
+    // exists; "Crear solicitud" there registers and then sends them.
+    _controller.clearError();
+    final request = _buildRequest();
+    final flow = IdentityFlowController(
+      repository: Dependencies.instance.driverIdentityRepository,
+      createAccount: () async {
+        final driver = await _controller.register(request);
+        if (driver == null) {
+          throw ApiException(_controller.error ?? 'No se pudo crear la solicitud. Intenta de nuevo.');
+        }
+      },
+    );
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => IdentityPhotosScreen(
+          controller: flow,
+          title: 'Verifica tu identidad',
+          highlight: 'identidad',
+          subtitle: 'Paso 2 de 2 · Fotos obligatorias',
+          intro: 'La oficina compara tu cara con tu cédula para confirmar que eres tú. '
+              'Tómalas ahora, con este teléfono.',
+          showSteps: true,
+          submitLabel: 'Crear solicitud',
+          onSubmitted: (ctx) => Navigator.of(ctx).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const ChecklistHubScreen()),
+            (_) => false,
+          ),
+        ),
+      ),
+    );
+    flow.dispose();
   }
 
   RegisterRequest _buildRequest() => RegisterRequest(
@@ -296,8 +325,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
               const SizedBox(height: 10),
             ],
             PrimaryButton(
-              label: 'Crear solicitud',
-              loading: _controller.submitting,
+              label: 'Continuar',
               onPressed: _submit,
             ),
           ],

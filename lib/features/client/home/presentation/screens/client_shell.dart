@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/di.dart';
 import '../../../../../domain/entities/client.dart';
+import '../../../../../shared/actions/logout_action.dart';
+import '../../../../identity/presentation/widgets/identity_gate.dart';
 import '../../../../../shared/widgets/floating_nav.dart';
 import '../../../profile/presentation/screens/client_profile_screen.dart';
 import '../../../trips/presentation/screens/client_trips_screen.dart';
@@ -31,6 +34,17 @@ class _ClientShellState extends State<ClientShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Identity photos (2026-11-12): missing or rejected ones stop the
+    // passenger here, whichever door he came in through.
+    return IdentityGate(
+      repository: Dependencies.instance.clientIdentityRepository,
+      isDriver: false,
+      onLogout: performClientLogout,
+      child: _shell(),
+    );
+  }
+
+  Widget _shell() {
     return Scaffold(
       body: IndexedStack(
         index: _index,

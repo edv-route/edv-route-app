@@ -1,4 +1,5 @@
 import '../../domain/entities/client.dart';
+import '../../domain/entities/identity.dart';
 
 /// Maps the backend client JSON (`/client-auth` payloads) to the domain [Client].
 Client clientFromJson(Map<String, dynamic> json) => Client(
@@ -16,4 +17,7 @@ Client clientFromJson(Map<String, dynamic> json) => Client(
       status: json['status'] as String? ?? 'active',
       nationalId: json['nationalId'] as String?,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
+      identityStatus: json['identityStatus'] == null
+          ? null
+          : IdentityStatus.fromApi(json['identityStatus'] as String?),
     );

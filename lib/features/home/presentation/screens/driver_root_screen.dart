@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/di.dart';
 import '../../../../core/push/push_service.dart';
 import '../../../../domain/entities/driver.dart';
+import '../../../../shared/actions/logout_action.dart';
+import '../../../identity/presentation/widgets/identity_gate.dart';
 import '../../../enrollment/presentation/screens/alta_payment_screen.dart';
 import '../../../enrollment/presentation/screens/checklist_hub_screen.dart';
 import './driver_shell.dart';
@@ -37,6 +40,21 @@ class _DriverRootScreenState extends State<DriverRootScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final destination = _destination();
+    // Identity photos (2026-11-12) stand in front of every state the person
+    // can act from. Rejected and suspended only see their status screen: there
+    // is nothing for them to do in the app, photos included.
+    final status = widget.driver.status;
+    if (status == DriverStatus.rejected || status == DriverStatus.suspended) return destination;
+    return IdentityGate(
+      repository: Dependencies.instance.driverIdentityRepository,
+      isDriver: true,
+      onLogout: performLogout,
+      child: destination,
+    );
+  }
+
+  Widget _destination() {
     final driver = widget.driver;
     switch (driver.status) {
       case DriverStatus.applicant:

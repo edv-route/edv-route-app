@@ -6,6 +6,7 @@ import '../../../../../core/network/api_exception.dart';
 import '../../../../../core/utils/date_format.dart';
 import '../../../../../core/utils/initials.dart';
 import '../../../../../domain/entities/client.dart';
+import '../../../../../domain/entities/identity.dart';
 import '../../../../../shared/actions/logout_action.dart';
 import '../../../../../shared/widgets/gradient_header.dart';
 import '../../../../../shared/widgets/media_picker.dart';
@@ -58,6 +59,13 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   /// Picks a photo and replaces the profile one. The backend answers with the
   /// fresh signed URL, so the header repaints without reloading the session.
   Future<void> _changePhoto() async {
+    // Once the identity selfie exists it IS the profile photo and is final
+    // (2026-11-12); the server would refuse it anyway — say so before he picks.
+    final identity = widget.client.identityStatus;
+    if (identity != null && identity != IdentityStatus.missing) {
+      _snack('Tu foto de perfil es la de tu verificación de identidad y no se puede cambiar.');
+      return;
+    }
     final image = await pickPhoto(context);
     if (image == null || !mounted) return;
     setState(() => _photoBusy = true);

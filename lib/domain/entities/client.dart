@@ -1,3 +1,5 @@
+import 'identity.dart';
+
 /// A passenger's profile as returned by the `/client-auth` endpoints.
 ///
 /// Thin on purpose, mirroring the backend's `clientPublicSchema`: the person
@@ -31,6 +33,9 @@ class Client {
   /// When the client side of the account was created ("Cliente desde …").
   final DateTime? createdAt;
 
+  /// Identity photos (2026-11-12). Only `GET /me` carries it; null otherwise.
+  final IdentityStatus? identityStatus;
+
   const Client({
     required this.userId,
     required this.fullName,
@@ -46,6 +51,7 @@ class Client {
     required this.status,
     this.nationalId,
     this.createdAt,
+    this.identityStatus,
   });
 
   /// Locally applies what an edit (or a new photo) returned, so the profile
@@ -65,5 +71,6 @@ class Client {
         status: status,
         nationalId: nationalId,
         createdAt: createdAt,
+        identityStatus: identityStatus,
       );
 }

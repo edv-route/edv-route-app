@@ -4,8 +4,9 @@ import '../../theme/app_colors.dart';
 import '../../domain/entities/checklist.dart';
 
 /// Shared building blocks for the "completa tu solicitud" flow (hub + lists +
-/// detail screens). Extracted so the status pills, badges, section cards and
-/// navigable rows are defined once and reused across every screen.
+/// detail screens). Extracted so the status pills, badges and navigable rows
+/// are defined once and reused across every screen. The hub's own pieces live
+/// in `features/enrollment/presentation/widgets/application_hub_widgets.dart`.
 
 // Approved green isn't part of the brand scale, so it lives here as the single
 // source of truth for the "aprobado" pills.
@@ -77,95 +78,6 @@ class VehicleBadge extends StatelessWidget {
         return const StatusPill(label: 'En revisión', bg: AppColors.gold100, fg: AppColors.gold800);
     }
   }
-}
-
-/// A large tappable card for the hub, one per section (Documentos / Vehículos).
-/// Shows an icon, title, a progress subtitle and a red attention dot when the
-/// section still needs the applicant to act.
-class SectionCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool needsAttention;
-  final VoidCallback onTap;
-
-  const SectionCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.needsAttention,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.cardGrey),
-          ),
-          child: Row(
-            children: [
-              Container(
-                height: 44,
-                width: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primary50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(fontSize: 13, color: AppColors.muted, height: 1.3),
-                    ),
-                  ],
-                ),
-              ),
-              if (needsAttention) ...[
-                const _AttentionDot(),
-                const SizedBox(width: 8),
-              ],
-              const Icon(Icons.chevron_right, color: AppColors.muted, size: 22),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AttentionDot extends StatelessWidget {
-  const _AttentionDot();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        height: 9,
-        width: 9,
-        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-      );
 }
 
 /// A navigable row for a document (or vehicle) in a list: title, optional
@@ -243,54 +155,6 @@ class ChecklistTile extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Top banner summarizing whether the solicitud is complete or what remains.
-class ChecklistStatusBanner extends StatelessWidget {
-  final Checklist checklist;
-
-  const ChecklistStatusBanner({super.key, required this.checklist});
-
-  @override
-  Widget build(BuildContext context) {
-    final ready = checklist.isReadyForReview;
-    final n = checklist.pendingActions;
-    final color = ready ? AppColors.gold700 : AppColors.primary700;
-    final bg = ready ? AppColors.gold50 : AppColors.primary50;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ready ? AppColors.gold300 : AppColors.primary100),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(ready ? Icons.hourglass_top : Icons.checklist_rtl, color: color, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ready ? 'Tu solicitud está completa' : 'Te falta completar tu solicitud',
-                  style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: color),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  ready
-                      ? 'Un administrador la revisará y te avisaremos.'
-                      : 'Tienes $n ${n == 1 ? 'punto' : 'puntos'} por resolver antes de la revisión.',
-                  style: const TextStyle(fontSize: 13, color: AppColors.ink, height: 1.3),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -13,6 +13,10 @@ import '../../../../../shared/widgets/privacy_check.dart';
 import '../../../../../shared/widgets/registration_fields.dart';
 import '../../../../../theme/app_colors.dart';
 import '../../../home/presentation/screens/client_shell.dart';
+import '../../../../identity/presentation/controllers/identity_flow_controller.dart';
+import '../../../../identity/presentation/screens/identity_photos_screen.dart';
+import '../../../../../core/network/api_exception.dart';
+import '../../../../../domain/entities/client.dart';
 import '../controllers/client_register_controller.dart';
 
 /// Passenger self-registration: the SAME fields as the affiliate's, with the
@@ -96,14 +100,40 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
     }
     if (!formOk || birthMissing || privacyMissing) return;
 
-    final client = await _controller.register(_buildRequest());
-    if (client != null && mounted) {
-      // The register response already carries the session: straight to the app.
-      await Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => ClientShell(client: client)),
-        (route) => route.isFirst,
-      );
-    }
+    // Step 2 (2026-11-12): identity photos, taken before the account exists.
+    // "Crear mi cuenta" there registers, sends them and enters the app — no
+    // approval for the passenger.
+    _controller.clearError();
+    final request = _buildRequest();
+    Client? created;
+    final flow = IdentityFlowController(
+      repository: Dependencies.instance.clientIdentityRepository,
+      createAccount: () async {
+        created = await _controller.register(request);
+        if (created == null) {
+          throw ApiException(_controller.error ?? 'No se pudo crear tu cuenta. Intenta de nuevo.');
+        }
+      },
+    );
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => IdentityPhotosScreen(
+          controller: flow,
+          title: 'Verifica tu identidad',
+          highlight: 'identidad',
+          subtitle: 'Pasajero · Paso 2 de 2',
+          intro: 'Tus fotos le dan confianza al afiliado que te lleva. '
+              'No esperas aprobación: entras apenas termines.',
+          showSteps: true,
+          submitLabel: 'Crear mi cuenta',
+          onSubmitted: (ctx) => Navigator.of(ctx).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => ClientShell(client: created!)),
+            (route) => route.isFirst,
+          ),
+        ),
+      ),
+    );
+    flow.dispose();
   }
 
   ClientRegisterRequest _buildRequest() => ClientRegisterRequest(
@@ -304,8 +334,7 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
               const SizedBox(height: 10),
             ],
             PrimaryButton(
-              label: 'Crear mi cuenta',
-              loading: _controller.submitting,
+              label: 'Continuar',
               onPressed: _submit,
             ),
           ],

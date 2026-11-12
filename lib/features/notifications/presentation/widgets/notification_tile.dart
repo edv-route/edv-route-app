@@ -114,11 +114,15 @@ NoticeLook lookFor(String type) {
     'vehicle_approved' ||
     'driver_reactivated' =>
       (icon: Icons.check_circle_outline_rounded, foreground: good.foreground, background: good.background),
+    'identity_verified' =>
+      (icon: Icons.verified_user_outlined, foreground: good.foreground, background: good.background),
     'payment_rejected' ||
     'application_rejected' ||
     'document_rejected' ||
     'vehicle_rejected' =>
       (icon: Icons.cancel_outlined, foreground: bad.foreground, background: bad.background),
+    'identity_photo_rejected' =>
+      (icon: Icons.no_photography_outlined, foreground: bad.foreground, background: bad.background),
     'penalty_applied' =>
       (icon: Icons.block_rounded, foreground: bad.foreground, background: bad.background),
     'debt_overdue' =>

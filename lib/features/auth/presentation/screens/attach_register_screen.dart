@@ -129,7 +129,8 @@ class _AttachRegisterScreenState extends State<AttachRegisterScreen> {
                           Expanded(
                             child: Text(
                               'Ya tienes cuenta con la cédula ${widget.nationalId}. '
-                              'Solo faltan los datos de este nuevo rol.',
+                              'Solo faltan los datos de este nuevo rol. Si ya enviaste tus '
+                              'fotos de verificación, no tendrás que tomarlas de nuevo.',
                               style: const TextStyle(fontSize: 13, height: 1.4, color: AppColors.muted),
                             ),
                           ),

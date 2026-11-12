@@ -7,7 +7,12 @@ import '../../../../theme/app_colors.dart';
 import '../../../home/presentation/screens/driver_root_screen.dart';
 import '../../../../domain/entities/checklist.dart';
 import '../../../../domain/entities/driver.dart';
+import '../../../../domain/entities/identity.dart';
+import '../../../identity/presentation/controllers/identity_flow_controller.dart';
+import '../../../identity/presentation/screens/identity_photos_screen.dart';
+import '../application_progress.dart';
 import '../controllers/checklist_controller.dart';
+import '../widgets/application_hub_widgets.dart';
 import '../../../../shared/widgets/checklist_widgets.dart';
 import './documents_list_screen.dart';
 import './vehicles_list_screen.dart';
@@ -15,8 +20,9 @@ import './vehicles_list_screen.dart';
 /// "Completa tu solicitud" — the applicant's home. Owns the single
 /// [ChecklistController] shared with every sub-screen (documents / vehicles /
 /// detail) so there is one `/me/checklist` load and every screen reacts to the
-/// same state. Instead of one long list, it offers two sections the applicant
-/// navigates into freely (non-blocking).
+/// same state. Redesigned 2026-11-12: progress, one highlighted next step and
+/// three sections the applicant navigates into freely — identity (the photos),
+/// documents and vehicle.
 ///
 /// It also watches the driver's status: when the admin approves the solicitud the
 /// applicant becomes `approved`, and the hub routes on to the payment screen on
@@ -40,6 +46,40 @@ class _ChecklistHubScreenState extends State<ChecklistHubScreen> with WidgetsBin
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller.load();
+    _loadIdentity();
+  }
+
+  /// Identity photos (2026-11-12): their own section. A failed load leaves
+  /// the previous value — the section reads "En revisión", never a false
+  /// "Falta" that would send him to retake photos he already sent.
+  IdentityView? _identity;
+
+  Future<void> _loadIdentity() async {
+    try {
+      final view = await Dependencies.instance.driverIdentityRepository.load();
+      if (mounted) setState(() => _identity = view);
+    } catch (_) {
+      // keep what we had
+    }
+  }
+
+  Future<void> _openIdentity() async {
+    final flow = IdentityFlowController(repository: Dependencies.instance.driverIdentityRepository);
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => IdentityPhotosScreen(
+          controller: flow,
+          loadOnStart: true,
+          title: 'Tu identidad',
+          highlight: 'identidad',
+          subtitle: 'Revisión de la oficina',
+          submitLabel: 'Enviar fotos',
+          onSubmitted: (ctx) => Navigator.of(ctx).pop(),
+        ),
+      ),
+    );
+    flow.dispose();
+    await _loadIdentity();
   }
 
   @override
@@ -58,7 +98,7 @@ class _ChecklistHubScreenState extends State<ChecklistHubScreen> with WidgetsBin
 
   /// Pull-to-refresh: reload the checklist AND re-check the driver's status.
   Future<void> _refresh() async {
-    await _controller.load();
+    await Future.wait([_controller.load(), _loadIdentity()]);
     await _syncDriverStatus();
   }
 
@@ -97,14 +137,27 @@ class _ChecklistHubScreenState extends State<ChecklistHubScreen> with WidgetsBin
     );
   }
 
+  void _open(HubSection section) {
+    switch (section) {
+      case HubSection.identity:
+        _openIdentity();
+      case HubSection.documents:
+        _openDocuments();
+      case HubSection.vehicle:
+        _openVehicles();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F7F8),
       body: Column(
         children: [
           const AuthHeader(
             title: 'Completa tu solicitud',
-            subtitle: 'Sube lo que falta para que revisemos tu ingreso',
+            highlight: 'solicitud',
+            subtitle: 'Te falta poco para empezar a trabajar',
           ),
           Expanded(
             child: ListenableBuilder(
@@ -125,56 +178,78 @@ class _ChecklistHubScreenState extends State<ChecklistHubScreen> with WidgetsBin
     );
   }
 
+  /// Redesign approved by Luis (2026-11-12): progress, ONE next step, and the
+  /// three sections — identity, documents, vehicle — each with a plain state.
   Widget _content(Checklist? checklist) {
     if (checklist == null) return const SizedBox.shrink();
+    final progress = ApplicationProgress(identity: _identity, checklist: checklist);
+    final next = progress.nextStep;
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
         children: [
-          ChecklistStatusBanner(checklist: checklist),
-          const SizedBox(height: 20),
-          SectionCard(
+          ProgressSegments(done: progress.doneCount, total: progress.sections.length),
+          const SizedBox(height: 14),
+          if (next != null)
+            NextStepCard(step: next, onTap: () => _open(next.section))
+          else if (progress.doneCount < progress.sections.length)
+            const WaitingCard(),
+          const SizedBox(height: 14),
+          HubSectionTile(
+            state: progress.identitySection,
+            icon: Icons.verified_user_outlined,
+            title: 'Identidad',
+            subtitle: 'Foto tipo carnet y cédula',
+            onTap: _openIdentity,
+          ),
+          const SizedBox(height: 10),
+          HubSectionTile(
+            state: progress.documentsSection,
             icon: Icons.description_outlined,
             title: 'Documentos',
             subtitle: _documentsSubtitle(checklist),
-            needsAttention: checklist.driverActionable > 0,
             onTap: _openDocuments,
           ),
-          const SizedBox(height: 12),
-          SectionCard(
+          const SizedBox(height: 10),
+          HubSectionTile(
+            state: progress.vehicleSection,
             icon: Icons.directions_car_outlined,
-            title: 'Vehículos',
+            title: 'Vehículo',
             subtitle: _vehiclesSubtitle(checklist),
-            needsAttention: checklist.vehicleCount == 0 || checklist.vehiclesActionable > 0,
             onTap: _openVehicles,
           ),
-          const SizedBox(height: 24),
-          TextButton.icon(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout, size: 18),
-            label: const Text('Cerrar sesión'),
-            style: TextButton.styleFrom(foregroundColor: AppColors.primary900),
+          const SizedBox(height: 14),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'Cuando las tres secciones estén aprobadas, pasas al pago de inscripción.',
+              style: TextStyle(fontSize: 12, height: 1.45, color: AppColors.muted),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: TextButton.icon(
+              onPressed: _logout,
+              icon: const Icon(Icons.logout, size: 18),
+              label: const Text('Cerrar sesión'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary900),
+            ),
           ),
         ],
       ),
     );
   }
 
-  /// "2 de 3 aprobados · 1 por resolver" — a compact progress line for the card.
+  /// The requirement names, so he knows what "Documentos" holds.
   String _documentsSubtitle(Checklist c) {
     if (c.driverTotal == 0) return 'Sin documentos requeridos por ahora';
-    final base = '${c.driverApproved} de ${c.driverTotal} aprobados';
-    if (c.driverActionable > 0) return '$base · ${c.driverActionable} por resolver';
-    return base;
+    return c.driverDocuments.map((d) => d.requirementName).join(' · ');
   }
 
   String _vehiclesSubtitle(Checklist c) {
-    if (c.vehicleCount == 0) return 'Falta agregar tu vehículo (obligatorio)';
-    final noun = c.vehicleCount == 1 ? 'vehículo' : 'vehículos';
-    final base = '${c.vehicleCount} $noun';
-    if (c.vehiclesActionable > 0) return '$base · ${c.vehiclesActionable} por resolver';
-    if (c.vehiclesApproved == c.vehicleCount) return '$base · aprobado${c.vehicleCount == 1 ? '' : 's'}';
-    return '$base · en revisión';
+    if (c.vehicleCount == 0) return 'Agrega tu vehículo y sus papeles';
+    final name = c.vehicles.first.label;
+    return c.vehicleCount == 1 ? name : '$name y ${c.vehicleCount - 1} más';
   }
 }

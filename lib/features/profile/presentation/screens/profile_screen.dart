@@ -10,6 +10,7 @@ import '../../../../shared/widgets/driver_header.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../domain/entities/driver.dart';
 import '../../../../domain/entities/enrollment_cost.dart';
+import '../../../../domain/entities/identity.dart';
 import '../../../enrollment/presentation/controllers/checklist_controller.dart';
 import '../../../enrollment/presentation/screens/alta_payment_screen.dart';
 import '../../../enrollment/presentation/advance_payment_flow.dart';
@@ -119,6 +120,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// Picks a photo and replaces the profile one. The backend answers with the
   /// fresh signed URL, so the header repaints without reloading the session.
   Future<void> _changePhoto() async {
+    // Once the identity selfie exists it IS the profile photo and is final
+    // (2026-11-12); the server would refuse it anyway — say so before he picks.
+    final identity = widget.driver.identityStatus;
+    if (identity != null && identity != IdentityStatus.missing) {
+      _snack('Tu foto de perfil es la de tu verificación de identidad y no se puede cambiar.');
+      return;
+    }
     final image = await pickPhoto(context);
     if (image == null || !mounted) return;
     try {

@@ -1,4 +1,5 @@
 import '../../domain/entities/driver.dart';
+import '../../domain/entities/identity.dart';
 
 /// Maps the backend driver JSON (`/driver-auth` payloads) to the domain [Driver].
 Driver driverFromJson(Map<String, dynamic> json) => Driver(
@@ -13,4 +14,7 @@ Driver driverFromJson(Map<String, dynamic> json) => Driver(
       isAvailable: json['isAvailable'] as bool? ?? false,
       tariffStarted: json['tariffStarted'] as bool? ?? false,
       avgRating: json['avgRating'] == null ? null : double.tryParse('${json['avgRating']}'),
+      identityStatus: json['identityStatus'] == null
+          ? null
+          : IdentityStatus.fromApi(json['identityStatus'] as String?),
     );

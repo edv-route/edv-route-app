@@ -6,7 +6,6 @@ import '../../../home/presentation/screens/driver_root_screen.dart';
 import '../../../../domain/entities/client.dart';
 import '../../../../domain/entities/driver.dart';
 import '../../../client/home/presentation/screens/client_shell.dart';
-import '../../../enrollment/presentation/screens/checklist_hub_screen.dart';
 
 /// App entry point: resumes a stored session on launch — the driver's first,
 /// then the client's (the UI never lets both exist at once: reaching the other
@@ -39,11 +38,9 @@ class _SplashScreenState extends State<SplashScreen> {
     final d = driver;
     final navigator = Navigator.of(context);
     if (d != null) {
-      if (d.status == DriverStatus.applicant) {
-        navigator.pushReplacement(MaterialPageRoute(builder: (_) => const ChecklistHubScreen()));
-      } else {
-        navigator.pushReplacement(MaterialPageRoute(builder: (_) => DriverRootScreen(driver: d)));
-      }
+      // Every status — applicants included — enters through the root, which
+      // routes by status and puts the identity gate in front (2026-11-12).
+      navigator.pushReplacement(MaterialPageRoute(builder: (_) => DriverRootScreen(driver: d)));
       return;
     }
 
